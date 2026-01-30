@@ -1,0 +1,11 @@
+services:
+  signal-cli:
+    image: bbernhard/signal-cli-rest-api:0.14.3
+    container_name: signal-sideband-cli
+    environment:
+      - MODE=normal # or 'json-rpc' if we wanted that, but normal provides the REST API + Websocket
+    ports:
+      - "8080:8080" # REST API and Websocket
+    volumes:
+      - ./signal-data:/home/.local/share/signal-cli
+    restart: unless-stopped
