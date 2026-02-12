@@ -5,6 +5,7 @@ export interface DailyInsight {
   quote_content: string
   quote_sender: string
   quote_created_at: string | null
+  image_path: string
   created_at: string
 }
 
@@ -18,6 +19,13 @@ export interface MediaAnalysis {
   analyzed_at?: string
 }
 
+export interface Superlative {
+  label: string
+  icon: string
+  winner: string
+  value: string
+}
+
 export interface Stats {
   total_messages: number
   today_messages: number
@@ -25,6 +33,7 @@ export interface Stats {
   total_urls: number
   latest_digest: DigestRecord | null
   daily_insight: DailyInsight | null
+  superlatives: Superlative[] | null
 }
 
 export interface MessageRecord {

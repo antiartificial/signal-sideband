@@ -121,8 +121,15 @@ func main() {
 		}
 	}
 
+	// Setup Gemini pic-of-the-day generator
+	var picGen *media.PicOfDayGenerator
+	if geminiKey := os.Getenv("GEMINI_API_KEY"); geminiKey != "" {
+		picGen = media.NewPicOfDayGenerator(geminiKey, mediaPath)
+		log.Println("Gemini PicOfDay generator enabled")
+	}
+
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, apiPort, authPassword, mediaPath, webDir)
+		apiServer := api.NewServer(storage, embedder, digestGen, picGen, apiPort, authPassword, mediaPath, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)
@@ -166,7 +173,7 @@ func main() {
 
 		// Digest scheduler (daily at midnight)
 		if digestGen != nil {
-			insightsGen := digest.NewInsightsGenerator(storage, llmProvider)
+			insightsGen := digest.NewInsightsGenerator(storage, llmProvider, picGen)
 			scheduler := digest.NewScheduler(digestGen, insightsGen, 24*time.Hour)
 			go scheduler.Start(ctx)
 		}

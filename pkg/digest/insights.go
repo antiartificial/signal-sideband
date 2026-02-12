@@ -9,16 +9,18 @@ import (
 	"time"
 
 	"signal-sideband/pkg/llm"
+	"signal-sideband/pkg/media"
 	"signal-sideband/pkg/store"
 )
 
 type InsightsGenerator struct {
 	store    *store.Store
 	provider llm.Provider
+	picGen   *media.PicOfDayGenerator
 }
 
-func NewInsightsGenerator(s *store.Store, p llm.Provider) *InsightsGenerator {
-	return &InsightsGenerator{store: s, provider: p}
+func NewInsightsGenerator(s *store.Store, p llm.Provider, picGen *media.PicOfDayGenerator) *InsightsGenerator {
+	return &InsightsGenerator{store: s, provider: p, picGen: picGen}
 }
 
 type insightsJSON struct {
@@ -118,5 +120,18 @@ func (g *InsightsGenerator) GenerateDailyInsights(ctx context.Context) error {
 	}
 
 	log.Printf("Insights: generated daily insight %s", id)
+
+	// Generate nano banana picture of the day
+	if g.picGen != nil {
+		imagePath, err := g.picGen.Generate(ctx, parsed.Themes, parsed.Overview)
+		if err != nil {
+			log.Printf("PicOfDay: generation failed: %v", err)
+		} else if imagePath != "" {
+			if err := g.store.SetInsightImagePath(ctx, id, imagePath); err != nil {
+				log.Printf("PicOfDay: failed to save image path: %v", err)
+			}
+		}
+	}
+
 	return nil
 }

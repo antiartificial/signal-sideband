@@ -10,6 +10,7 @@ import (
 
 	"signal-sideband/pkg/ai"
 	"signal-sideband/pkg/digest"
+	"signal-sideband/pkg/media"
 	"signal-sideband/pkg/store"
 )
 
@@ -17,12 +18,13 @@ type Handlers struct {
 	store        *store.Store
 	embedder     ai.Embedder
 	generator    *digest.Generator
+	picGen       *media.PicOfDayGenerator
 	mediaPath    string
 	authPassword string
 }
 
-func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, mediaPath string, authPassword string) *Handlers {
-	return &Handlers{store: s, embedder: e, generator: g, mediaPath: mediaPath, authPassword: authPassword}
+func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, picGen *media.PicOfDayGenerator, mediaPath string, authPassword string) *Handlers {
+	return &Handlers{store: s, embedder: e, generator: g, picGen: picGen, mediaPath: mediaPath, authPassword: authPassword}
 }
 
 type loginRequest struct {
@@ -205,6 +207,7 @@ type generateRequest struct {
 	PeriodStart string  `json:"period_start"`
 	PeriodEnd   string  `json:"period_end"`
 	GroupID     *string `json:"group_id,omitempty"`
+	Lens        string  `json:"lens,omitempty"`
 }
 
 func (h *Handlers) GenerateDigest(w http.ResponseWriter, r *http.Request) {
@@ -240,7 +243,7 @@ func (h *Handlers) GenerateDigest(w http.ResponseWriter, r *http.Request) {
 		end = end.Add(23*time.Hour + 59*time.Minute + 59*time.Second)
 	}
 
-	d, err := h.generator.Generate(r.Context(), start, end, req.GroupID)
+	d, err := h.generator.Generate(r.Context(), start, end, req.GroupID, req.Lens)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -373,6 +376,59 @@ func (h *Handlers) SearchMedia(w http.ResponseWriter, r *http.Request) {
 		results = []store.MediaSearchResult{}
 	}
 	writeJSON(w, http.StatusOK, results)
+}
+
+func (h *Handlers) ServePicOfDay(w http.ResponseWriter, r *http.Request) {
+	insight, err := h.store.GetLatestInsight(r.Context())
+	if err != nil || insight.ImagePath == "" {
+		writeError(w, http.StatusNotFound, "no picture of the day available")
+		return
+	}
+
+	if _, err := os.Stat(insight.ImagePath); os.IsNotExist(err) {
+		writeError(w, http.StatusNotFound, "image file not found")
+		return
+	}
+
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	http.ServeFile(w, r, insight.ImagePath)
+}
+
+func (h *Handlers) GeneratePicOfDay(w http.ResponseWriter, r *http.Request) {
+	if h.picGen == nil {
+		writeError(w, http.StatusServiceUnavailable, "GEMINI_API_KEY not configured")
+		return
+	}
+
+	// Get latest insight for themes
+	insight, err := h.store.GetLatestInsight(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "no daily insight available — generate one first")
+		return
+	}
+
+	var themes []string
+	_ = json.Unmarshal(insight.Themes, &themes)
+	if len(themes) == 0 {
+		themes = []string{"technology", "conversation", "daily life"}
+	}
+
+	imagePath, err := h.picGen.Generate(r.Context(), themes, insight.Overview)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "image generation failed: "+err.Error())
+		return
+	}
+
+	// Save the image path to the insight
+	if err := h.store.SetInsightImagePath(r.Context(), insight.ID, imagePath); err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to save image path: "+err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{
+		"image_path": imagePath,
+		"insight_id": insight.ID,
+	})
 }
 
 func intParam(r *http.Request, key string, fallback int) int {

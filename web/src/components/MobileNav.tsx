@@ -39,7 +39,7 @@ export default function MobileNav() {
           className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] min-w-[48px]
             text-apple-secondary transition-all duration-200 active:scale-95"
         >
-          <i className={`fawsb ${theme === 'dark' ? 'fa-sun-bright' : 'fa-moon'} text-lg`} />
+          <i className={`fawsb ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-lg`} />
           <span>{theme === 'dark' ? 'Light' : 'Dark'}</span>
         </button>
       </div>

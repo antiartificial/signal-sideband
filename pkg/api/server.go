@@ -10,6 +10,7 @@ import (
 
 	"signal-sideband/pkg/ai"
 	"signal-sideband/pkg/digest"
+	"signal-sideband/pkg/media"
 	"signal-sideband/pkg/store"
 )
 
@@ -18,8 +19,8 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
-	h := NewHandlers(s, embedder, generator, mediaPath, authPassword)
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, picGen *media.PicOfDayGenerator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
+	h := NewHandlers(s, embedder, generator, picGen, mediaPath, authPassword)
 
 	mux := http.NewServeMux()
 
@@ -47,6 +48,10 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 	mux.HandleFunc("GET /api/media/search", h.SearchMedia)
 	mux.HandleFunc("GET /api/media/{id}", h.ServeMedia)
 	mux.HandleFunc("GET /api/media/{id}/thumb", h.ServeMediaThumb)
+
+	// Picture of the Day
+	mux.HandleFunc("GET /api/potd", h.ServePicOfDay)
+	mux.HandleFunc("POST /api/potd/generate", h.GeneratePicOfDay)
 
 	// Stats
 	mux.HandleFunc("GET /api/stats", h.GetStats)

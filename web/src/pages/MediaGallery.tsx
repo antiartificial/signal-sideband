@@ -62,7 +62,7 @@ export default function MediaGallery() {
         <select
           value={sort}
           onChange={e => { setSort(e.target.value); setOffset(0) }}
-          className="px-3 py-1.5 rounded-lg border border-apple-border bg-white text-sm"
+          className="px-3 py-1.5 rounded-lg border border-apple-border bg-apple-card text-sm"
         >
           <option value="date_desc">Newest</option>
           <option value="date_asc">Oldest</option>
@@ -81,11 +81,11 @@ export default function MediaGallery() {
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
             placeholder="Search media by AI analysis..."
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm"
           />
         </div>
         {activeSearch && (
-          <button type="button" onClick={clearSearch} className="px-3 py-2 rounded-lg border border-apple-border bg-white text-sm text-apple-secondary hover:text-apple-text">
+          <button type="button" onClick={clearSearch} className="px-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm text-apple-secondary hover:text-apple-text">
             Clear
           </button>
         )}
@@ -160,7 +160,7 @@ function MediaCard({ att, onClick }: { att: AttachmentRecord; onClick: () => voi
           />
         ) : (
           <div className="w-full aspect-square bg-gray-50 flex flex-col items-center justify-center">
-            <i className={`fawsb ${isImage ? 'fa-image' : isVideo ? 'fa-circle-play' : 'fa-file'} text-2xl text-apple-secondary mb-1`} />
+            <i className={`fawsb ${isImage ? 'fa-image' : isVideo ? 'fa-play' : 'fa-file'} text-2xl text-apple-secondary mb-1`} />
             <span className="text-xs text-apple-secondary">{att.content_type}</span>
             {!att.downloaded && (
               <span className="text-xs text-apple-secondary mt-1">Downloading...</span>
@@ -171,7 +171,7 @@ function MediaCard({ att, onClick }: { att: AttachmentRecord; onClick: () => voi
         {/* Video play overlay */}
         {isVideo && hasThumb && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-            <i className="fawsb fa-circle-play text-white text-3xl drop-shadow" />
+            <i className="fawsb fa-play text-white text-3xl drop-shadow" />
           </div>
         )}
 

@@ -41,7 +41,7 @@ export default function Search() {
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search messages..."
-            className="flex-1 px-4 py-2.5 rounded-xl border border-apple-border bg-white text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition-colors"
+            className="flex-1 px-4 py-2.5 rounded-xl border border-apple-border bg-apple-card text-sm focus:outline-none focus:ring-2 focus:ring-apple-blue/30 focus:border-apple-blue transition-colors"
           />
           <button
             type="submit"
@@ -53,12 +53,12 @@ export default function Search() {
 
         <div className="flex items-center gap-3 mt-3">
           {/* Mode toggle */}
-          <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+          <div className="flex gap-1 bg-gray-100 dark:bg-white/5 rounded-lg p-0.5">
             <button
               type="button"
               onClick={() => setMode('fulltext')}
               className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                mode === 'fulltext' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
+                mode === 'fulltext' ? 'bg-apple-card shadow-sm font-medium text-apple-blue' : 'text-apple-secondary'
               }`}
             >
               Full Text
@@ -67,7 +67,7 @@ export default function Search() {
               type="button"
               onClick={() => setMode('semantic')}
               className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-                mode === 'semantic' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
+                mode === 'semantic' ? 'bg-apple-card shadow-sm font-medium text-apple-blue' : 'text-apple-secondary'
               }`}
             >
               Semantic
@@ -88,14 +88,14 @@ export default function Search() {
 
         {/* Filter panel */}
         {showFilters && (
-          <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-apple-border space-y-3">
+          <div className="mt-3 p-4 bg-gray-50 dark:bg-white/[0.03] rounded-xl border border-apple-border space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-xs text-apple-secondary mb-1">Group</label>
                 <select
                   value={filters.group_id || ''}
                   onChange={e => setFilters(f => ({ ...f, group_id: e.target.value || undefined }))}
-                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm"
                 >
                   <option value="">All groups</option>
                   {groups?.map(g => (
@@ -110,7 +110,7 @@ export default function Search() {
                   value={filters.sender_id || ''}
                   onChange={e => setFilters(f => ({ ...f, sender_id: e.target.value || undefined }))}
                   placeholder="Phone or UUID"
-                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm"
                 />
               </div>
               <div>
@@ -119,7 +119,7 @@ export default function Search() {
                   type="date"
                   value={filters.after?.split('T')[0] || ''}
                   onChange={e => setFilters(f => ({ ...f, after: e.target.value ? e.target.value + 'T00:00:00Z' : undefined }))}
-                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm"
                 />
               </div>
               <div>
@@ -128,7 +128,7 @@ export default function Search() {
                   type="date"
                   value={filters.before?.split('T')[0] || ''}
                   onChange={e => setFilters(f => ({ ...f, before: e.target.value ? e.target.value + 'T23:59:59Z' : undefined }))}
-                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-apple-card text-sm"
                 />
               </div>
             </div>

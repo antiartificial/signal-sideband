@@ -129,7 +129,15 @@ type DailyInsight struct {
 	QuoteContent   string          `db:"quote_content" json:"quote_content,omitempty"`
 	QuoteSender    string          `db:"quote_sender" json:"quote_sender,omitempty"`
 	QuoteCreatedAt *time.Time      `db:"quote_created_at" json:"quote_created_at,omitempty"`
+	ImagePath      string          `db:"image_path" json:"image_path,omitempty"`
 	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
+}
+
+type Superlative struct {
+	Label  string `json:"label"`
+	Icon   string `json:"icon"`
+	Winner string `json:"winner"`
+	Value  string `json:"value"`
 }
 
 type Stats struct {
@@ -139,4 +147,5 @@ type Stats struct {
 	TotalURLs     int            `json:"total_urls"`
 	LatestDigest  *DigestRecord  `json:"latest_digest,omitempty"`
 	DailyInsight  *DailyInsight  `json:"daily_insight,omitempty"`
+	Superlatives  []Superlative  `json:"superlatives,omitempty"`
 }

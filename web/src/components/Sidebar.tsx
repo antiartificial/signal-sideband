@@ -49,7 +49,7 @@ export default function Sidebar() {
           className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-sm text-apple-secondary
             hover:bg-apple-accent-dim hover:text-apple-text transition-all duration-200"
         >
-          <i className={`fawsb ${theme === 'dark' ? 'fa-sun-bright' : 'fa-moon'} text-sm w-4 text-center`} />
+          <i className={`fawsb ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-sm w-4 text-center`} />
           {theme === 'dark' ? 'Light Mode' : 'Dark Mode'}
         </button>
       </div>

@@ -57,6 +57,9 @@ func (s *Store) GetStats(ctx context.Context) (*Stats, error) {
 		stats.DailyInsight = insight
 	}
 
+	// Superlatives
+	stats.Superlatives = s.GetSuperlatives(ctx)
+
 	return stats, nil
 }
 
@@ -64,11 +67,11 @@ func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
 	var di DailyInsight
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, overview, themes, COALESCE(quote_content,''), COALESCE(quote_sender,''),
-			quote_created_at, created_at
+			quote_created_at, COALESCE(image_path,''), created_at
 		FROM daily_insights ORDER BY created_at DESC LIMIT 1
 	`).Scan(
 		&di.ID, &di.Overview, &di.Themes, &di.QuoteContent, &di.QuoteSender,
-		&di.QuoteCreatedAt, &di.CreatedAt,
+		&di.QuoteCreatedAt, &di.ImagePath, &di.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -85,6 +88,11 @@ func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes js
 	var id string
 	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender).Scan(&id)
 	return id, err
+}
+
+func (s *Store) SetInsightImagePath(ctx context.Context, id, imagePath string) error {
+	_, err := s.pool.Exec(ctx, `UPDATE daily_insights SET image_path = $2 WHERE id = $1`, id, imagePath)
+	return err
 }
 
 func (s *Store) GetRandomQuote(ctx context.Context) (string, string, error) {

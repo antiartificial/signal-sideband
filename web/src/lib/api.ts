@@ -95,11 +95,11 @@ export function getDigest(id: string) {
   return fetchJSON<DigestRecord>(`${BASE}/digests/${id}`)
 }
 
-export function generateDigest(periodStart: string, periodEnd: string, groupId?: string) {
+export function generateDigest(periodStart: string, periodEnd: string, groupId?: string, lens?: string) {
   return fetchJSON<DigestRecord>(`${BASE}/digests/generate`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ period_start: periodStart, period_end: periodEnd, group_id: groupId }),
+    body: JSON.stringify({ period_start: periodStart, period_end: periodEnd, group_id: groupId, lens }),
   })
 }
 
@@ -119,6 +119,16 @@ export function mediaURL(id: string) {
 
 export function mediaThumbnailURL(id: string) {
   return `${BASE}/media/${id}/thumb`
+}
+
+export function picOfDayURL() {
+  return `${BASE}/potd`
+}
+
+export function generatePicOfDay() {
+  return fetchJSON<{ image_path: string; insight_id: string }>(`${BASE}/potd/generate`, {
+    method: 'POST',
+  })
 }
 
 export function searchMedia(q: string, limit: number = 50) {

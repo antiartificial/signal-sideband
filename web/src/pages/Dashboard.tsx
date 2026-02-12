@@ -1,25 +1,73 @@
-import { useQuery } from '@tanstack/react-query'
+import { useState } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getStats, getMessages } from '../lib/api.ts'
+import { getStats, getMessages, generateDigest, picOfDayURL, generatePicOfDay } from '../lib/api.ts'
 import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
-import { format } from 'date-fns'
+import { format, subDays } from 'date-fns'
 
 export default function Dashboard() {
   const navigate = useNavigate()
+  const queryClient = useQueryClient()
   const { data: stats, isLoading } = useQuery({ queryKey: ['stats'], queryFn: getStats })
   const { data: recent } = useQuery({
     queryKey: ['messages', 'recent'],
     queryFn: () => getMessages({ limit: '5' }),
   })
+  const [generating, setGenerating] = useState(false)
+  const [activeLens, setActiveLens] = useState<string | null>(null)
+  const [generatingPotd, setGeneratingPotd] = useState(false)
+  const [potdKey, setPotdKey] = useState(0)
+
+  const lenses = [
+    { id: 'default', label: 'Standard', icon: 'fa-newspaper', desc: 'Straight newsletter' },
+    { id: 'gondor', label: 'Gondor', icon: 'fa-shield-halved', desc: 'Chronicles of the Citadel' },
+    { id: 'confucius', label: 'Confucius', icon: 'fa-book-open', desc: 'The Master says...' },
+    { id: 'city-wok', label: 'City Wok', icon: 'fa-fire', desc: 'Goddamn Mongorians!' },
+  ]
+
+  const handleGenerateDigest = async (lens: string) => {
+    setGenerating(true)
+    setActiveLens(lens)
+    try {
+      const now = new Date()
+      const yesterday = subDays(now, 1)
+      await generateDigest(
+        format(yesterday, 'yyyy-MM-dd'),
+        format(now, 'yyyy-MM-dd'),
+        undefined,
+        lens === 'default' ? undefined : lens,
+      )
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+      queryClient.invalidateQueries({ queryKey: ['digests'] })
+    } catch (e) {
+      console.error('Failed to generate digest:', e)
+    } finally {
+      setGenerating(false)
+      setActiveLens(null)
+    }
+  }
+
+  const handleGeneratePotd = async () => {
+    setGeneratingPotd(true)
+    try {
+      await generatePicOfDay()
+      setPotdKey(k => k + 1)
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    } catch (e) {
+      console.error('Failed to generate picture of the day:', e)
+    } finally {
+      setGeneratingPotd(false)
+    }
+  }
 
   if (isLoading) return <LoadingSpinner />
 
   const insight = stats?.daily_insight
 
   const statCards = [
-    { label: 'Total Messages', value: stats?.total_messages ?? 0, icon: 'fa-messages' },
-    { label: 'Today', value: stats?.today_messages ?? 0, icon: 'fa-calendar-day' },
+    { label: 'Total Messages', value: stats?.total_messages ?? 0, icon: 'fa-comments' },
+    { label: 'Today', value: stats?.today_messages ?? 0, icon: 'fa-calendar' },
     { label: 'Groups', value: stats?.total_groups ?? 0, icon: 'fa-users' },
     { label: 'Links Collected', value: stats?.total_urls ?? 0, icon: 'fa-link' },
   ]
@@ -59,7 +107,7 @@ export default function Dashboard() {
           {insight.themes && insight.themes.length > 0 && (
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-3">
-                <i className="fawsb fa-tags text-apple-blue" />
+                <i className="fawsb fa-tag text-apple-blue" />
                 <h3 className="text-lg font-medium">Topics & Themes</h3>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -85,7 +133,7 @@ export default function Dashboard() {
           {insight.quote_content && (
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-3">
-                <i className="fawsb fa-quote-left text-apple-blue" />
+                <i className="fawsb fa-quotes text-apple-blue" />
                 <h3 className="text-lg font-medium">Quote of the Day</h3>
               </div>
               <blockquote className="border-l-3 border-apple-blue pl-4 py-1">
@@ -99,18 +147,83 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Latest digest */}
-      {stats?.latest_digest && (
-        <div className="mb-8">
-          <h3 className="text-lg font-medium mb-3">
-            <i className="fawsb fa-newspaper text-apple-secondary mr-2" />
-            Latest Digest
+      {/* Nano Banana — Picture of the Day */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-lg font-medium">
+            <i className="fawsb fa-image text-apple-secondary mr-2" />
+            Nano Banana of the Day
           </h3>
+          <button
+            onClick={handleGeneratePotd}
+            disabled={generatingPotd}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-apple-border bg-apple-card
+              text-sm text-apple-secondary hover:text-apple-blue hover:border-apple-blue/50
+              active:scale-95 transition-all duration-200 disabled:opacity-50"
+          >
+            <i className={`fawsb ${generatingPotd ? 'fa-sparkles animate-pulse' : 'fa-wand-magic-sparkles'}`} />
+            {generatingPotd ? 'Generating...' : 'New banana'}
+          </button>
+        </div>
+        <Card className="overflow-hidden">
+          {insight?.image_path ? (
+            <img
+              key={potdKey}
+              src={`${picOfDayURL()}?v=${potdKey}`}
+              alt="Nano banana of the day"
+              className="w-full max-h-[400px] object-contain bg-gray-50 dark:bg-white/[0.03]"
+            />
+          ) : (
+            <div className="py-12 text-center">
+              <i className="fawsb fa-image text-4xl text-apple-secondary mb-3" />
+              <p className="text-sm text-apple-secondary">
+                {insight ? 'No banana yet today. Generate one above.' : 'Generate a daily insight first, then summon the banana.'}
+              </p>
+            </div>
+          )}
+        </Card>
+      </div>
+
+      {/* Digest lenses — fortune cookie style */}
+      <div className="mb-8">
+        <h3 className="text-lg font-medium mb-3">
+          <i className="fawsb fa-newspaper text-apple-secondary mr-2" />
+          Crack Open a Digest
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          {lenses.map(lens => (
+            <button
+              key={lens.id}
+              onClick={() => handleGenerateDigest(lens.id)}
+              disabled={generating}
+              className={`relative p-4 rounded-xl border text-left transition-all duration-200
+                active:scale-95 disabled:opacity-50 group
+                ${generating && activeLens === lens.id
+                  ? 'border-apple-blue bg-apple-blue/10'
+                  : 'border-apple-border bg-apple-card hover:border-apple-blue/50 hover:shadow-sm'
+                }`}
+            >
+              <i className={`fawsb ${lens.icon} text-lg mb-2 block
+                ${generating && activeLens === lens.id ? 'text-apple-blue animate-pulse' : 'text-apple-secondary group-hover:text-apple-blue'}
+                transition-colors`}
+              />
+              <p className="text-sm font-medium text-apple-text">{lens.label}</p>
+              <p className="text-xs text-apple-secondary mt-0.5">{lens.desc}</p>
+              {generating && activeLens === lens.id && (
+                <span className="absolute top-3 right-3 text-xs text-apple-blue font-mono">brewing...</span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        {stats?.latest_digest ? (
           <Card
             className="p-6 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate(`/digests/${stats.latest_digest!.id}`)}
           >
-            <h4 className="text-base font-semibold mb-2">{stats.latest_digest.title}</h4>
+            <div className="flex items-center gap-2 mb-2">
+              <h4 className="text-base font-semibold">{stats.latest_digest.title}</h4>
+            </div>
             <p className="text-sm text-apple-secondary line-clamp-3">
               {stats.latest_digest.summary.slice(0, 200)}...
             </p>
@@ -118,31 +231,70 @@ export default function Dashboard() {
               {format(new Date(stats.latest_digest.created_at), 'MMM d, yyyy')}
             </p>
           </Card>
+        ) : (
+          <Card className="p-8 text-center">
+            <p className="text-sm text-apple-secondary">No digests yet. Pick a lens above and crack one open.</p>
+          </Card>
+        )}
+      </div>
+
+      {/* Superlatives */}
+      {stats?.superlatives && stats.superlatives.length > 0 && (
+        <div className="mb-8">
+          <h3 className="text-lg font-medium mb-3">
+            <i className="fawsb fa-crown text-apple-secondary mr-2" />
+            Superlatives
+          </h3>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            {stats.superlatives.map((s, i) => (
+              <Card key={s.label} className="p-4" style={{ animationDelay: `${i * 60}ms` }}>
+                <i className={`fawsb ${s.icon} text-apple-blue text-lg mb-2 block`} />
+                <p className="text-xs font-semibold text-apple-blue uppercase tracking-wide">{s.label}</p>
+                <p className="text-sm text-apple-text font-medium mt-1 truncate" title={s.winner}>
+                  {s.winner === 'self' ? 'You' : s.winner}
+                </p>
+                <p className="text-xs text-apple-secondary mt-0.5">{s.value}</p>
+              </Card>
+            ))}
+          </div>
         </div>
       )}
 
-      {/* Recent activity */}
+      {/* Recent messages — chat thread */}
       <div>
         <h3 className="text-lg font-medium mb-3">
-          <i className="fawsb fa-clock-rotate-left text-apple-secondary mr-2" />
+          <i className="fawsb fa-clock text-apple-secondary mr-2" />
           Recent Messages
         </h3>
-        <Card className="divide-y divide-apple-border">
+        <Card className="p-4 space-y-3">
           {recent?.data.map(msg => (
-            <div key={msg.id} className="px-5 py-3.5">
-              <div className="flex items-center justify-between mb-1">
-                <span className="text-sm font-medium">
-                  {msg.is_outgoing ? 'You' : msg.sender_id}
-                </span>
-                <span className="text-xs text-apple-secondary">
-                  {format(new Date(msg.created_at), 'MMM d, h:mm a')}
-                </span>
+            <div
+              key={msg.id}
+              className={`flex ${msg.is_outgoing ? 'justify-end' : 'justify-start'}`}
+            >
+              <div className={`max-w-[80%] ${msg.is_outgoing ? 'items-end' : 'items-start'}`}>
+                {!msg.is_outgoing && (
+                  <p className="text-xs font-medium text-apple-secondary mb-0.5 px-1 truncate max-w-[200px]">
+                    {msg.sender_id}
+                  </p>
+                )}
+                <div
+                  className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
+                    msg.is_outgoing
+                      ? 'bg-apple-blue text-white rounded-br-md'
+                      : 'bg-gray-100 dark:bg-white/[0.06] text-apple-text rounded-bl-md'
+                  }`}
+                >
+                  {msg.content}
+                </div>
+                <p className={`text-[10px] text-apple-secondary mt-0.5 px-1 ${msg.is_outgoing ? 'text-right' : ''}`}>
+                  {format(new Date(msg.created_at), 'h:mm a')}
+                </p>
               </div>
-              <p className="text-sm text-apple-secondary line-clamp-2">{msg.content}</p>
             </div>
           ))}
           {(!recent?.data || recent.data.length === 0) && (
-            <div className="px-5 py-8 text-center text-sm text-apple-secondary">
+            <div className="py-8 text-center text-sm text-apple-secondary">
               No messages yet
             </div>
           )}

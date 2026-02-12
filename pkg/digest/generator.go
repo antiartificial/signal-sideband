@@ -29,7 +29,7 @@ type digestJSON struct {
 	ActionItems []string `json:"action_items"`
 }
 
-func (g *Generator) Generate(ctx context.Context, start, end time.Time, groupID *string) (*store.DigestRecord, error) {
+func (g *Generator) Generate(ctx context.Context, start, end time.Time, groupID *string, lens ...string) (*store.DigestRecord, error) {
 	messages, err := g.store.GetMessagesByTimeRange(ctx, start, end, groupID)
 	if err != nil {
 		return nil, fmt.Errorf("fetch messages: %w", err)
@@ -52,12 +52,21 @@ func (g *Generator) Generate(ctx context.Context, start, end time.Time, groupID 
 
 	periodLabel := fmt.Sprintf("%s to %s", start.Format("Jan 2, 2006"), end.Format("Jan 2, 2006"))
 
+	selectedLens := ""
+	if len(lens) > 0 {
+		selectedLens = lens[0]
+	}
+	temperature := 0.3
+	if selectedLens != "" && selectedLens != "default" {
+		temperature = 0.7 // more creative for character lenses
+	}
+
 	// Call LLM
 	resp, err := g.provider.Complete(ctx, llm.CompletionRequest{
-		SystemPrompt: systemPrompt,
+		SystemPrompt: systemPromptForLens(selectedLens),
 		UserPrompt:   buildUserPrompt(sb.String(), periodLabel),
 		MaxTokens:    4096,
-		Temperature:  0.3,
+		Temperature:  temperature,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("llm completion: %w", err)
