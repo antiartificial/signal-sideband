@@ -170,6 +170,26 @@ func (s *Store) GetSuperlatives(ctx context.Context) []Superlative {
 		})
 	}
 
+	// 8. The Director — most videos shared
+	var directorSender string
+	var directorCount int
+	err = s.pool.QueryRow(ctx, `
+		SELECT m.sender_id, COUNT(*) as cnt
+		FROM attachments a JOIN messages m ON a.message_id = m.id
+		WHERE a.content_type LIKE 'video/%'
+		AND m.created_at > NOW() - INTERVAL '30 days'
+		AND (m.expires_at IS NULL OR m.expires_at > now())
+		GROUP BY m.sender_id ORDER BY cnt DESC LIMIT 1
+	`).Scan(&directorSender, &directorCount)
+	if err == nil {
+		results = append(results, Superlative{
+			Label:  "The Director",
+			Icon:   "fa-film",
+			Winner: directorSender,
+			Value:  fmt.Sprintf("%d videos", directorCount),
+		})
+	}
+
 	if len(results) == 0 {
 		log.Println("Superlatives: no data available")
 	}

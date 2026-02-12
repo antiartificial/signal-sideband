@@ -130,6 +130,7 @@ type DailyInsight struct {
 	QuoteSender    string          `db:"quote_sender" json:"quote_sender,omitempty"`
 	QuoteCreatedAt *time.Time      `db:"quote_created_at" json:"quote_created_at,omitempty"`
 	ImagePath      string          `db:"image_path" json:"image_path,omitempty"`
+	Superlatives   json.RawMessage `db:"superlatives" json:"superlatives,omitempty"`
 	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
 }
 

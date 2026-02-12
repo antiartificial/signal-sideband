@@ -20,10 +20,33 @@ func corsMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func isMediaServingPath(path string) bool {
+	// Exempt file-serving endpoints from auth — img/video tags can't send Bearer tokens.
+	// These use UUID-based paths that aren't enumerable.
+	if path == "/api/potd" {
+		return true
+	}
+	// /api/media/{uuid} and /api/media/{uuid}/thumb
+	if strings.HasPrefix(path, "/api/media/") {
+		rest := strings.TrimPrefix(path, "/api/media/")
+		// Must have a UUID-like segment (not "search" or empty)
+		if rest != "" && rest != "search" && !strings.HasPrefix(rest, "search?") {
+			return true
+		}
+	}
+	return false
+}
+
 func authMiddleware(password string, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if path == "/health" || strings.HasPrefix(path, "/api/auth/") || r.Method == http.MethodOptions || !strings.HasPrefix(path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+
+		// Allow media file-serving without auth (img/video tags can't send headers)
+		if r.Method == http.MethodGet && isMediaServingPath(path) {
 			next.ServeHTTP(w, r)
 			return
 		}

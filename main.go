@@ -128,8 +128,14 @@ func main() {
 		log.Println("Gemini PicOfDay generator enabled")
 	}
 
+	// Setup insights generator (needed by API and scheduler)
+	var insightsGen *digest.InsightsGenerator
+	if llmProvider != nil && storage != nil {
+		insightsGen = digest.NewInsightsGenerator(storage, llmProvider, picGen)
+	}
+
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, picGen, apiPort, authPassword, mediaPath, webDir)
+		apiServer := api.NewServer(storage, embedder, digestGen, insightsGen, picGen, apiPort, authPassword, mediaPath, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)
@@ -173,7 +179,6 @@ func main() {
 
 		// Digest scheduler (daily at midnight)
 		if digestGen != nil {
-			insightsGen := digest.NewInsightsGenerator(storage, llmProvider, picGen)
 			scheduler := digest.NewScheduler(digestGen, insightsGen, 24*time.Hour)
 			go scheduler.Start(ctx)
 		}

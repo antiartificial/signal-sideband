@@ -114,7 +114,11 @@ func (g *InsightsGenerator) GenerateDailyInsights(ctx context.Context) error {
 
 	themes, _ := json.Marshal(parsed.Themes)
 
-	id, err := g.store.SaveDailyInsight(ctx, parsed.Overview, themes, quoteContent, quoteSender)
+	// Compute and cache superlatives
+	superlatives := g.store.GetSuperlatives(ctx)
+	superlativesJSON, _ := json.Marshal(superlatives)
+
+	id, err := g.store.SaveDailyInsight(ctx, parsed.Overview, themes, quoteContent, quoteSender, superlativesJSON)
 	if err != nil {
 		return fmt.Errorf("save insight: %w", err)
 	}

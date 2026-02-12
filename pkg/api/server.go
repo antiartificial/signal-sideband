@@ -19,8 +19,8 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, picGen *media.PicOfDayGenerator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
-	h := NewHandlers(s, embedder, generator, picGen, mediaPath, authPassword)
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, insightsGen *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
+	h := NewHandlers(s, embedder, generator, insightsGen, picGen, mediaPath, authPassword)
 
 	mux := http.NewServeMux()
 
@@ -48,6 +48,9 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 	mux.HandleFunc("GET /api/media/search", h.SearchMedia)
 	mux.HandleFunc("GET /api/media/{id}", h.ServeMedia)
 	mux.HandleFunc("GET /api/media/{id}/thumb", h.ServeMediaThumb)
+
+	// Insights
+	mux.HandleFunc("POST /api/insights/generate", h.GenerateInsight)
 
 	// Picture of the Day
 	mux.HandleFunc("GET /api/potd", h.ServePicOfDay)

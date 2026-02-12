@@ -125,6 +125,12 @@ export function picOfDayURL() {
   return `${BASE}/potd`
 }
 
+export function generateInsight() {
+  return fetchJSON<any>(`${BASE}/insights/generate`, {
+    method: 'POST',
+  })
+}
+
 export function generatePicOfDay() {
   return fetchJSON<{ image_path: string; insight_id: string }>(`${BASE}/potd/generate`, {
     method: 'POST',

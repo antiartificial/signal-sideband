@@ -22,6 +22,9 @@ func (s *Scheduler) Start(ctx context.Context) {
 
 	log.Printf("Digest scheduler started (interval: %s)", s.interval)
 
+	// Run insights immediately on startup (digest waits for first tick)
+	s.generateInsights(ctx)
+
 	for {
 		select {
 		case <-ctx.Done():

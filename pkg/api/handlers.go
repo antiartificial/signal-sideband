@@ -18,13 +18,14 @@ type Handlers struct {
 	store        *store.Store
 	embedder     ai.Embedder
 	generator    *digest.Generator
+	insightsGen  *digest.InsightsGenerator
 	picGen       *media.PicOfDayGenerator
 	mediaPath    string
 	authPassword string
 }
 
-func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, picGen *media.PicOfDayGenerator, mediaPath string, authPassword string) *Handlers {
-	return &Handlers{store: s, embedder: e, generator: g, picGen: picGen, mediaPath: mediaPath, authPassword: authPassword}
+func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, ig *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, mediaPath string, authPassword string) *Handlers {
+	return &Handlers{store: s, embedder: e, generator: g, insightsGen: ig, picGen: picGen, mediaPath: mediaPath, authPassword: authPassword}
 }
 
 type loginRequest struct {
@@ -392,6 +393,26 @@ func (h *Handlers) ServePicOfDay(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "public, max-age=3600")
 	http.ServeFile(w, r, insight.ImagePath)
+}
+
+func (h *Handlers) GenerateInsight(w http.ResponseWriter, r *http.Request) {
+	if h.insightsGen == nil {
+		writeError(w, http.StatusServiceUnavailable, "LLM provider not configured")
+		return
+	}
+
+	if err := h.insightsGen.GenerateDailyInsights(r.Context()); err != nil {
+		writeError(w, http.StatusInternalServerError, "insight generation failed: "+err.Error())
+		return
+	}
+
+	insight, err := h.store.GetLatestInsight(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to retrieve generated insight")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, insight)
 }
 
 func (h *Handlers) GeneratePicOfDay(w http.ResponseWriter, r *http.Request) {

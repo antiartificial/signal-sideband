@@ -51,14 +51,24 @@ func (s *Store) GetStats(ctx context.Context) (*Stats, error) {
 		stats.LatestDigest = &d
 	}
 
-	// Latest daily insight
+	// Latest daily insight (includes cached superlatives)
 	insight, err := s.GetLatestInsight(ctx)
 	if err == nil && insight != nil {
 		stats.DailyInsight = insight
+
+		// Use cached superlatives from insight if available
+		if len(insight.Superlatives) > 2 { // more than "[]"
+			var cached []Superlative
+			if json.Unmarshal(insight.Superlatives, &cached) == nil && len(cached) > 0 {
+				stats.Superlatives = cached
+			}
+		}
 	}
 
-	// Superlatives
-	stats.Superlatives = s.GetSuperlatives(ctx)
+	// Fallback: compute live if no cached superlatives
+	if len(stats.Superlatives) == 0 {
+		stats.Superlatives = s.GetSuperlatives(ctx)
+	}
 
 	return stats, nil
 }
@@ -67,11 +77,11 @@ func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
 	var di DailyInsight
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, overview, themes, COALESCE(quote_content,''), COALESCE(quote_sender,''),
-			quote_created_at, COALESCE(image_path,''), created_at
+			quote_created_at, COALESCE(image_path,''), COALESCE(superlatives, '[]'::jsonb), created_at
 		FROM daily_insights ORDER BY created_at DESC LIMIT 1
 	`).Scan(
 		&di.ID, &di.Overview, &di.Themes, &di.QuoteContent, &di.QuoteSender,
-		&di.QuoteCreatedAt, &di.ImagePath, &di.CreatedAt,
+		&di.QuoteCreatedAt, &di.ImagePath, &di.Superlatives, &di.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -79,14 +89,14 @@ func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
 	return &di, nil
 }
 
-func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes json.RawMessage, quoteContent, quoteSender string) (string, error) {
+func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes json.RawMessage, quoteContent, quoteSender string, superlatives json.RawMessage) (string, error) {
 	query := `
-		INSERT INTO daily_insights (overview, themes, quote_content, quote_sender)
-		VALUES ($1, $2, $3, $4)
+		INSERT INTO daily_insights (overview, themes, quote_content, quote_sender, superlatives)
+		VALUES ($1, $2, $3, $4, $5)
 		RETURNING id
 	`
 	var id string
-	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender).Scan(&id)
+	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender, superlatives).Scan(&id)
 	return id, err
 }
 

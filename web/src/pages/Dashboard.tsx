@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getStats, getMessages, generateDigest, picOfDayURL, generatePicOfDay } from '../lib/api.ts'
+import { getStats, getMessages, generateDigest, picOfDayURL, generatePicOfDay, generateInsight } from '../lib/api.ts'
 import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import { format, subDays } from 'date-fns'
@@ -17,7 +17,9 @@ export default function Dashboard() {
   const [generating, setGenerating] = useState(false)
   const [activeLens, setActiveLens] = useState<string | null>(null)
   const [generatingPotd, setGeneratingPotd] = useState(false)
+  const [generatingInsight, setGeneratingInsight] = useState(false)
   const [potdKey, setPotdKey] = useState(0)
+  const [error, setError] = useState<string | null>(null)
 
   const lenses = [
     { id: 'default', label: 'Standard', icon: 'fa-newspaper', desc: 'Straight newsletter' },
@@ -26,9 +28,28 @@ export default function Dashboard() {
     { id: 'city-wok', label: 'City Wok', icon: 'fa-fire', desc: 'Goddamn Mongorians!' },
   ]
 
+  const showError = (msg: string) => {
+    setError(msg)
+    setTimeout(() => setError(null), 8000)
+  }
+
+  const handleGenerateInsight = async () => {
+    setGeneratingInsight(true)
+    setError(null)
+    try {
+      await generateInsight()
+      queryClient.invalidateQueries({ queryKey: ['stats'] })
+    } catch (e: any) {
+      showError(`Insight generation failed: ${e.message}`)
+    } finally {
+      setGeneratingInsight(false)
+    }
+  }
+
   const handleGenerateDigest = async (lens: string) => {
     setGenerating(true)
     setActiveLens(lens)
+    setError(null)
     try {
       const now = new Date()
       const yesterday = subDays(now, 1)
@@ -40,8 +61,8 @@ export default function Dashboard() {
       )
       queryClient.invalidateQueries({ queryKey: ['stats'] })
       queryClient.invalidateQueries({ queryKey: ['digests'] })
-    } catch (e) {
-      console.error('Failed to generate digest:', e)
+    } catch (e: any) {
+      showError(`Digest generation failed: ${e.message}`)
     } finally {
       setGenerating(false)
       setActiveLens(null)
@@ -50,12 +71,13 @@ export default function Dashboard() {
 
   const handleGeneratePotd = async () => {
     setGeneratingPotd(true)
+    setError(null)
     try {
       await generatePicOfDay()
       setPotdKey(k => k + 1)
       queryClient.invalidateQueries({ queryKey: ['stats'] })
-    } catch (e) {
-      console.error('Failed to generate picture of the day:', e)
+    } catch (e: any) {
+      showError(`Banana generation failed: ${e.message}`)
     } finally {
       setGeneratingPotd(false)
     }
@@ -76,6 +98,17 @@ export default function Dashboard() {
     <div>
       <h2 className="text-2xl font-semibold tracking-tight mb-6">Dashboard</h2>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/20 text-sm text-red-700 dark:text-red-400 flex items-center gap-2">
+          <i className="fawsb fa-triangle-exclamation" />
+          {error}
+          <button onClick={() => setError(null)} className="ml-auto text-red-400 hover:text-red-600">
+            <i className="fawsb fa-xmark" />
+          </button>
+        </div>
+      )}
+
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {statCards.map((s, i) => (
@@ -90,7 +123,7 @@ export default function Dashboard() {
       </div>
 
       {/* Daily insight */}
-      {insight && (
+      {insight ? (
         <div className="mb-8 space-y-4">
           {/* Overview */}
           {insight.overview && (
@@ -111,13 +144,13 @@ export default function Dashboard() {
                 <h3 className="text-lg font-medium">Topics & Themes</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                {insight.themes.map((theme, i) => {
+                {insight.themes.map((theme: string, i: number) => {
                   const colors = [
-                    'bg-blue-100 text-blue-700',
-                    'bg-purple-100 text-purple-700',
-                    'bg-green-100 text-green-700',
-                    'bg-orange-100 text-orange-700',
-                    'bg-pink-100 text-pink-700',
+                    'bg-blue-100 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300',
+                    'bg-purple-100 text-purple-700 dark:bg-purple-500/15 dark:text-purple-300',
+                    'bg-green-100 text-green-700 dark:bg-green-500/15 dark:text-green-300',
+                    'bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300',
+                    'bg-pink-100 text-pink-700 dark:bg-pink-500/15 dark:text-pink-300',
                   ]
                   return (
                     <span key={i} className={`px-3 py-1 rounded-full text-sm font-medium ${colors[i % colors.length]}`}>
@@ -145,6 +178,22 @@ export default function Dashboard() {
             </Card>
           )}
         </div>
+      ) : (
+        <div className="mb-8">
+          <Card className="p-8 text-center">
+            <i className="fawsb fa-sparkles text-3xl text-apple-secondary mb-3 block" />
+            <p className="text-sm text-apple-secondary mb-4">No daily insight yet. Generate one to see today's overview, themes, and quote of the day.</p>
+            <button
+              onClick={handleGenerateInsight}
+              disabled={generatingInsight}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-apple-blue text-white text-sm font-medium
+                hover:bg-apple-blue/90 active:scale-95 transition-all duration-200 disabled:opacity-50"
+            >
+              <i className={`fawsb ${generatingInsight ? 'fa-sparkles animate-pulse' : 'fa-wand-magic-sparkles'}`} />
+              {generatingInsight ? 'Generating insight...' : 'Generate Daily Insight'}
+            </button>
+          </Card>
+        </div>
       )}
 
       {/* Nano Banana — Picture of the Day */}
@@ -156,7 +205,7 @@ export default function Dashboard() {
           </h3>
           <button
             onClick={handleGeneratePotd}
-            disabled={generatingPotd}
+            disabled={generatingPotd || !insight}
             className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-apple-border bg-apple-card
               text-sm text-apple-secondary hover:text-apple-blue hover:border-apple-blue/50
               active:scale-95 transition-all duration-200 disabled:opacity-50"
@@ -175,7 +224,7 @@ export default function Dashboard() {
             />
           ) : (
             <div className="py-12 text-center">
-              <i className="fawsb fa-image text-4xl text-apple-secondary mb-3" />
+              <i className="fawsb fa-image text-4xl text-apple-secondary mb-3 block" />
               <p className="text-sm text-apple-secondary">
                 {insight ? 'No banana yet today. Generate one above.' : 'Generate a daily insight first, then summon the banana.'}
               </p>
