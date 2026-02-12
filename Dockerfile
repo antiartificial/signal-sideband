@@ -14,7 +14,7 @@ COPY web/ .
 RUN pnpm build
 
 FROM alpine:3.21
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates ffmpeg
 WORKDIR /app
 COPY --from=builder /app/signal-sideband .
 COPY --from=web /app/web/dist ./web/dist

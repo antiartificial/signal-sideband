@@ -43,15 +43,23 @@ type ContactRecord struct {
 }
 
 type AttachmentRecord struct {
-	ID                 string    `db:"id" json:"id"`
-	MessageID          string    `db:"message_id" json:"message_id"`
-	SignalAttachmentID string    `db:"signal_attachment_id" json:"signal_attachment_id"`
-	ContentType        string    `db:"content_type" json:"content_type"`
-	Filename           string    `db:"filename" json:"filename"`
-	Size               int64     `db:"size" json:"size"`
-	LocalPath          string    `db:"local_path" json:"local_path,omitempty"`
-	Downloaded         bool      `db:"downloaded" json:"downloaded"`
-	CreatedAt          time.Time `db:"created_at" json:"created_at"`
+	ID                 string          `db:"id" json:"id"`
+	MessageID          string          `db:"message_id" json:"message_id"`
+	SignalAttachmentID string          `db:"signal_attachment_id" json:"signal_attachment_id"`
+	ContentType        string          `db:"content_type" json:"content_type"`
+	Filename           string          `db:"filename" json:"filename"`
+	Size               int64           `db:"size" json:"size"`
+	LocalPath          string          `db:"local_path" json:"local_path,omitempty"`
+	Downloaded         bool            `db:"downloaded" json:"downloaded"`
+	ThumbnailPath      string          `db:"thumbnail_path" json:"thumbnail_path,omitempty"`
+	Analyzed           bool            `db:"analyzed" json:"analyzed"`
+	Analysis           json.RawMessage `db:"analysis" json:"analysis,omitempty"`
+	CreatedAt          time.Time       `db:"created_at" json:"created_at"`
+}
+
+type MediaSearchResult struct {
+	AttachmentRecord
+	Rank float32 `json:"rank"`
 }
 
 type URLRecord struct {
@@ -114,10 +122,21 @@ type SearchResult struct {
 	CreatedAt      time.Time `json:"created_at"`
 }
 
+type DailyInsight struct {
+	ID             string          `db:"id" json:"id"`
+	Overview       string          `db:"overview" json:"overview"`
+	Themes         json.RawMessage `db:"themes" json:"themes"`
+	QuoteContent   string          `db:"quote_content" json:"quote_content,omitempty"`
+	QuoteSender    string          `db:"quote_sender" json:"quote_sender,omitempty"`
+	QuoteCreatedAt *time.Time      `db:"quote_created_at" json:"quote_created_at,omitempty"`
+	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
+}
+
 type Stats struct {
-	TotalMessages int    `json:"total_messages"`
-	TodayMessages int    `json:"today_messages"`
-	TotalGroups   int    `json:"total_groups"`
-	TotalURLs     int    `json:"total_urls"`
-	LatestDigest  *DigestRecord `json:"latest_digest,omitempty"`
+	TotalMessages int            `json:"total_messages"`
+	TodayMessages int            `json:"today_messages"`
+	TotalGroups   int            `json:"total_groups"`
+	TotalURLs     int            `json:"total_urls"`
+	LatestDigest  *DigestRecord  `json:"latest_digest,omitempty"`
+	DailyInsight  *DailyInsight  `json:"daily_insight,omitempty"`
 }

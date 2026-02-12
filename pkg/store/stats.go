@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 )
 
 func (s *Store) GetStats(ctx context.Context) (*Stats, error) {
@@ -50,5 +51,49 @@ func (s *Store) GetStats(ctx context.Context) (*Stats, error) {
 		stats.LatestDigest = &d
 	}
 
+	// Latest daily insight
+	insight, err := s.GetLatestInsight(ctx)
+	if err == nil && insight != nil {
+		stats.DailyInsight = insight
+	}
+
 	return stats, nil
+}
+
+func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
+	var di DailyInsight
+	err := s.pool.QueryRow(ctx, `
+		SELECT id, overview, themes, COALESCE(quote_content,''), COALESCE(quote_sender,''),
+			quote_created_at, created_at
+		FROM daily_insights ORDER BY created_at DESC LIMIT 1
+	`).Scan(
+		&di.ID, &di.Overview, &di.Themes, &di.QuoteContent, &di.QuoteSender,
+		&di.QuoteCreatedAt, &di.CreatedAt,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &di, nil
+}
+
+func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes json.RawMessage, quoteContent, quoteSender string) (string, error) {
+	query := `
+		INSERT INTO daily_insights (overview, themes, quote_content, quote_sender)
+		VALUES ($1, $2, $3, $4)
+		RETURNING id
+	`
+	var id string
+	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender).Scan(&id)
+	return id, err
+}
+
+func (s *Store) GetRandomQuote(ctx context.Context) (string, string, error) {
+	var content, sender string
+	err := s.pool.QueryRow(ctx, `
+		SELECT content, sender_id FROM messages
+		WHERE content != '' AND LENGTH(content) > 20
+		AND (expires_at IS NULL OR expires_at > now())
+		ORDER BY random() LIMIT 1
+	`).Scan(&content, &sender)
+	return content, sender, err
 }

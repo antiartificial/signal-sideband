@@ -15,11 +15,13 @@ export default function Dashboard() {
 
   if (isLoading) return <LoadingSpinner />
 
+  const insight = stats?.daily_insight
+
   const statCards = [
-    { label: 'Total Messages', value: stats?.total_messages ?? 0 },
-    { label: 'Today', value: stats?.today_messages ?? 0 },
-    { label: 'Groups', value: stats?.total_groups ?? 0 },
-    { label: 'Links Collected', value: stats?.total_urls ?? 0 },
+    { label: 'Total Messages', value: stats?.total_messages ?? 0, icon: 'fa-messages' },
+    { label: 'Today', value: stats?.today_messages ?? 0, icon: 'fa-calendar-day' },
+    { label: 'Groups', value: stats?.total_groups ?? 0, icon: 'fa-users' },
+    { label: 'Links Collected', value: stats?.total_urls ?? 0, icon: 'fa-link' },
   ]
 
   return (
@@ -28,20 +30,84 @@ export default function Dashboard() {
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {statCards.map(s => (
-          <Card key={s.label} className="p-5">
-            <p className="text-sm text-apple-secondary mb-1">{s.label}</p>
-            <p className="text-3xl font-semibold tracking-tight">{s.value.toLocaleString()}</p>
+        {statCards.map((s, i) => (
+          <Card key={s.label} className="p-5" style={{ animationDelay: `${i * 80}ms` }}>
+            <div className="flex items-center gap-2 mb-1">
+              <i className={`fawsb ${s.icon} text-apple-blue text-sm`} />
+              <p className="text-sm text-apple-secondary">{s.label}</p>
+            </div>
+            <p className="text-3xl font-semibold tracking-tight font-mono">{s.value.toLocaleString()}</p>
           </Card>
         ))}
       </div>
 
+      {/* Daily insight */}
+      {insight && (
+        <div className="mb-8 space-y-4">
+          {/* Overview */}
+          {insight.overview && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <i className="fawsb fa-sparkles text-apple-blue" />
+                <h3 className="text-lg font-medium">Today's Overview</h3>
+              </div>
+              <p className="text-sm text-apple-secondary leading-relaxed">{insight.overview}</p>
+            </Card>
+          )}
+
+          {/* Themes */}
+          {insight.themes && insight.themes.length > 0 && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <i className="fawsb fa-tags text-apple-blue" />
+                <h3 className="text-lg font-medium">Topics & Themes</h3>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {insight.themes.map((theme, i) => {
+                  const colors = [
+                    'bg-blue-100 text-blue-700',
+                    'bg-purple-100 text-purple-700',
+                    'bg-green-100 text-green-700',
+                    'bg-orange-100 text-orange-700',
+                    'bg-pink-100 text-pink-700',
+                  ]
+                  return (
+                    <span key={i} className={`px-3 py-1 rounded-full text-sm font-medium ${colors[i % colors.length]}`}>
+                      {theme}
+                    </span>
+                  )
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* Quote of the Day */}
+          {insight.quote_content && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-3">
+                <i className="fawsb fa-quote-left text-apple-blue" />
+                <h3 className="text-lg font-medium">Quote of the Day</h3>
+              </div>
+              <blockquote className="border-l-3 border-apple-blue pl-4 py-1">
+                <p className="text-sm text-apple-text italic leading-relaxed">"{insight.quote_content}"</p>
+                {insight.quote_sender && (
+                  <p className="text-xs text-apple-secondary mt-2">— {insight.quote_sender}</p>
+                )}
+              </blockquote>
+            </Card>
+          )}
+        </div>
+      )}
+
       {/* Latest digest */}
       {stats?.latest_digest && (
         <div className="mb-8">
-          <h3 className="text-lg font-medium mb-3">Latest Digest</h3>
+          <h3 className="text-lg font-medium mb-3">
+            <i className="fawsb fa-newspaper text-apple-secondary mr-2" />
+            Latest Digest
+          </h3>
           <Card
-            className="p-6"
+            className="p-6 cursor-pointer hover:shadow-md transition-shadow"
             onClick={() => navigate(`/digests/${stats.latest_digest!.id}`)}
           >
             <h4 className="text-base font-semibold mb-2">{stats.latest_digest.title}</h4>
@@ -57,7 +123,10 @@ export default function Dashboard() {
 
       {/* Recent activity */}
       <div>
-        <h3 className="text-lg font-medium mb-3">Recent Messages</h3>
+        <h3 className="text-lg font-medium mb-3">
+          <i className="fawsb fa-clock-rotate-left text-apple-secondary mr-2" />
+          Recent Messages
+        </h3>
         <Card className="divide-y divide-apple-border">
           {recent?.data.map(msg => (
             <div key={msg.id} className="px-5 py-3.5">

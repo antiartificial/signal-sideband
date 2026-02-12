@@ -1,9 +1,30 @@
+export interface DailyInsight {
+  id: string
+  overview: string
+  themes: string[]
+  quote_content: string
+  quote_sender: string
+  quote_created_at: string | null
+  created_at: string
+}
+
+export interface MediaAnalysis {
+  description: string
+  text_content: string
+  colors: string
+  objects: string
+  scene: string
+  model?: string
+  analyzed_at?: string
+}
+
 export interface Stats {
   total_messages: number
   today_messages: number
   total_groups: number
   total_urls: number
   latest_digest: DigestRecord | null
+  daily_insight: DailyInsight | null
 }
 
 export interface MessageRecord {
@@ -82,7 +103,14 @@ export interface AttachmentRecord {
   size: number
   local_path: string
   downloaded: boolean
+  thumbnail_path: string
+  analyzed: boolean
+  analysis: MediaAnalysis | null
   created_at: string
+}
+
+export interface MediaSearchResult extends AttachmentRecord {
+  rank: number
 }
 
 export interface PaginatedResponse<T> {

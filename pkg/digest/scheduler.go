@@ -8,11 +8,12 @@ import (
 
 type Scheduler struct {
 	generator *Generator
+	insights  *InsightsGenerator
 	interval  time.Duration
 }
 
-func NewScheduler(g *Generator, interval time.Duration) *Scheduler {
-	return &Scheduler{generator: g, interval: interval}
+func NewScheduler(g *Generator, insights *InsightsGenerator, interval time.Duration) *Scheduler {
+	return &Scheduler{generator: g, insights: insights, interval: interval}
 }
 
 func (s *Scheduler) Start(ctx context.Context) {
@@ -28,6 +29,7 @@ func (s *Scheduler) Start(ctx context.Context) {
 			return
 		case <-ticker.C:
 			s.generateDaily(ctx)
+			s.generateInsights(ctx)
 		}
 	}
 }
@@ -44,4 +46,13 @@ func (s *Scheduler) generateDaily(ctx context.Context) {
 		return
 	}
 	log.Printf("Daily digest generated: %s (id: %s)", digest.Title, digest.ID)
+}
+
+func (s *Scheduler) generateInsights(ctx context.Context) {
+	if s.insights == nil {
+		return
+	}
+	if err := s.insights.GenerateDailyInsights(ctx); err != nil {
+		log.Printf("Daily insights generation failed: %v", err)
+	}
 }

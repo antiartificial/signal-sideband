@@ -1,4 +1,4 @@
-import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord } from './types.ts'
+import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord, MediaSearchResult } from './types.ts'
 
 const BASE = '/api'
 const TOKEN_KEY = 'auth_token'
@@ -115,4 +115,13 @@ export function getMedia(params: Record<string, string> = {}) {
 
 export function mediaURL(id: string) {
   return `${BASE}/media/${id}`
+}
+
+export function mediaThumbnailURL(id: string) {
+  return `${BASE}/media/${id}/thumb`
+}
+
+export function searchMedia(q: string, limit: number = 50) {
+  const params = new URLSearchParams({ q, limit: String(limit) })
+  return fetchJSON<MediaSearchResult[]>(`${BASE}/media/search?${params}`)
 }

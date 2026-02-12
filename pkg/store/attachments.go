@@ -2,8 +2,21 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 )
+
+const attachmentCols = `id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
+	COALESCE(local_path,''), downloaded, COALESCE(thumbnail_path,''), analyzed, analysis, created_at`
+
+func scanAttachment(scan func(dest ...any) error) (AttachmentRecord, error) {
+	var a AttachmentRecord
+	err := scan(
+		&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
+		&a.LocalPath, &a.Downloaded, &a.ThumbnailPath, &a.Analyzed, &a.Analysis, &a.CreatedAt,
+	)
+	return a, err
+}
 
 func (s *Store) SaveAttachment(ctx context.Context, a AttachmentRecord) (string, error) {
 	query := `
@@ -19,16 +32,8 @@ func (s *Store) SaveAttachment(ctx context.Context, a AttachmentRecord) (string,
 }
 
 func (s *Store) GetAttachment(ctx context.Context, id string) (*AttachmentRecord, error) {
-	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
-			COALESCE(local_path,''), downloaded, created_at
-		FROM attachments WHERE id = $1
-	`
-	var a AttachmentRecord
-	err := s.pool.QueryRow(ctx, query, id).Scan(
-		&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
-		&a.LocalPath, &a.Downloaded, &a.CreatedAt,
-	)
+	query := fmt.Sprintf(`SELECT %s FROM attachments WHERE id = $1`, attachmentCols)
+	a, err := scanAttachment(s.pool.QueryRow(ctx, query, id).Scan)
 	if err != nil {
 		return nil, err
 	}
@@ -36,12 +41,7 @@ func (s *Store) GetAttachment(ctx context.Context, id string) (*AttachmentRecord
 }
 
 func (s *Store) ListAttachmentsByMessage(ctx context.Context, messageID string) ([]AttachmentRecord, error) {
-	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
-			COALESCE(local_path,''), downloaded, created_at
-		FROM attachments WHERE message_id = $1
-		ORDER BY created_at ASC
-	`
+	query := fmt.Sprintf(`SELECT %s FROM attachments WHERE message_id = $1 ORDER BY created_at ASC`, attachmentCols)
 	rows, err := s.pool.Query(ctx, query, messageID)
 	if err != nil {
 		return nil, err
@@ -50,11 +50,8 @@ func (s *Store) ListAttachmentsByMessage(ctx context.Context, messageID string) 
 
 	var attachments []AttachmentRecord
 	for rows.Next() {
-		var a AttachmentRecord
-		if err := rows.Scan(
-			&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
-			&a.LocalPath, &a.Downloaded, &a.CreatedAt,
-		); err != nil {
+		a, err := scanAttachment(rows.Scan)
+		if err != nil {
 			return nil, err
 		}
 		attachments = append(attachments, a)
@@ -83,18 +80,12 @@ func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int, sortB
 			orderClause = "size ASC"
 		case "type":
 			orderClause = "content_type ASC, created_at DESC"
-		default: // date_desc
+		default:
 			orderClause = "created_at DESC"
 		}
 	}
 
-	query := fmt.Sprintf(`
-		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
-			COALESCE(local_path,''), downloaded, created_at
-		FROM attachments
-		ORDER BY %s
-		LIMIT $1 OFFSET $2
-	`, orderClause)
+	query := fmt.Sprintf(`SELECT %s FROM attachments ORDER BY %s LIMIT $1 OFFSET $2`, attachmentCols, orderClause)
 	rows, err := s.pool.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, 0, err
@@ -103,11 +94,8 @@ func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int, sortB
 
 	var attachments []AttachmentRecord
 	for rows.Next() {
-		var a AttachmentRecord
-		if err := rows.Scan(
-			&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
-			&a.LocalPath, &a.Downloaded, &a.CreatedAt,
-		); err != nil {
+		a, err := scanAttachment(rows.Scan)
+		if err != nil {
 			return nil, 0, err
 		}
 		attachments = append(attachments, a)
@@ -122,13 +110,7 @@ func (s *Store) MarkAttachmentDownloaded(ctx context.Context, id, localPath stri
 }
 
 func (s *Store) GetUndownloadedAttachments(ctx context.Context) ([]AttachmentRecord, error) {
-	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
-			COALESCE(local_path,''), downloaded, created_at
-		FROM attachments WHERE downloaded = false
-		ORDER BY created_at ASC
-		LIMIT 100
-	`
+	query := fmt.Sprintf(`SELECT %s FROM attachments WHERE downloaded = false ORDER BY created_at ASC LIMIT 100`, attachmentCols)
 	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
 		return nil, err
@@ -137,14 +119,105 @@ func (s *Store) GetUndownloadedAttachments(ctx context.Context) ([]AttachmentRec
 
 	var attachments []AttachmentRecord
 	for rows.Next() {
-		var a AttachmentRecord
-		if err := rows.Scan(
-			&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
-			&a.LocalPath, &a.Downloaded, &a.CreatedAt,
-		); err != nil {
+		a, err := scanAttachment(rows.Scan)
+		if err != nil {
 			return nil, err
 		}
 		attachments = append(attachments, a)
 	}
 	return attachments, nil
+}
+
+func (s *Store) SetThumbnailPath(ctx context.Context, id, path string) error {
+	query := `UPDATE attachments SET thumbnail_path = $2 WHERE id = $1`
+	_, err := s.pool.Exec(ctx, query, id, path)
+	return err
+}
+
+func (s *Store) GetUnthumbnailedAttachments(ctx context.Context) ([]AttachmentRecord, error) {
+	query := fmt.Sprintf(`
+		SELECT %s FROM attachments
+		WHERE downloaded = true AND thumbnail_path IS NULL
+		AND (content_type LIKE 'image/%%' OR content_type LIKE 'video/%%')
+		ORDER BY created_at ASC LIMIT 100
+	`, attachmentCols)
+	rows, err := s.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var attachments []AttachmentRecord
+	for rows.Next() {
+		a, err := scanAttachment(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, a)
+	}
+	return attachments, nil
+}
+
+func (s *Store) GetUnanalyzedAttachments(ctx context.Context) ([]AttachmentRecord, error) {
+	query := fmt.Sprintf(`
+		SELECT %s FROM attachments
+		WHERE downloaded = true AND analyzed = false
+		AND (content_type LIKE 'image/%%' OR content_type LIKE 'video/%%')
+		ORDER BY created_at ASC LIMIT 50
+	`, attachmentCols)
+	rows, err := s.pool.Query(ctx, query)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var attachments []AttachmentRecord
+	for rows.Next() {
+		a, err := scanAttachment(rows.Scan)
+		if err != nil {
+			return nil, err
+		}
+		attachments = append(attachments, a)
+	}
+	return attachments, nil
+}
+
+func (s *Store) MarkAttachmentAnalyzed(ctx context.Context, id string, analysis json.RawMessage) error {
+	query := `UPDATE attachments SET analyzed = true, analysis = $2 WHERE id = $1`
+	_, err := s.pool.Exec(ctx, query, id, analysis)
+	return err
+}
+
+func (s *Store) SearchMedia(ctx context.Context, query string, limit int) ([]MediaSearchResult, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+	sqlQuery := fmt.Sprintf(`
+		SELECT %s, ts_rank(analysis_tsv, plainto_tsquery('english', $1)) AS rank
+		FROM attachments
+		WHERE analysis_tsv @@ plainto_tsquery('english', $1)
+		ORDER BY rank DESC
+		LIMIT $2
+	`, attachmentCols)
+
+	rows, err := s.pool.Query(ctx, sqlQuery, query, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []MediaSearchResult
+	for rows.Next() {
+		var r MediaSearchResult
+		err := rows.Scan(
+			&r.ID, &r.MessageID, &r.SignalAttachmentID, &r.ContentType, &r.Filename, &r.Size,
+			&r.LocalPath, &r.Downloaded, &r.ThumbnailPath, &r.Analyzed, &r.Analysis, &r.CreatedAt,
+			&r.Rank,
+		)
+		if err != nil {
+			return nil, err
+		}
+		results = append(results, r)
+	}
+	return results, nil
 }

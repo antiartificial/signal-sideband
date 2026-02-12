@@ -44,7 +44,9 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 
 	// Media
 	mux.HandleFunc("GET /api/media", h.GetMedia)
+	mux.HandleFunc("GET /api/media/search", h.SearchMedia)
 	mux.HandleFunc("GET /api/media/{id}", h.ServeMedia)
+	mux.HandleFunc("GET /api/media/{id}/thumb", h.ServeMediaThumb)
 
 	// Stats
 	mux.HandleFunc("GET /api/stats", h.GetStats)

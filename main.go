@@ -151,8 +151,14 @@ func main() {
 
 		// Media download worker
 		downloader := media.NewDownloader(signalAPI, mediaPath)
-		mediaWorker := media.NewWorker(storage, downloader, 30*time.Second)
+		mediaWorker := media.NewWorker(storage, downloader, 30*time.Second, mediaPath)
 		go mediaWorker.Start(ctx)
+
+		// AI vision analysis worker (requires XAI_API_KEY)
+		if xaiKey := os.Getenv("XAI_API_KEY"); xaiKey != "" {
+			analyzeWorker := media.NewAnalyzeWorker(storage, xaiKey, 60*time.Second, mediaPath)
+			go analyzeWorker.Start(ctx)
+		}
 
 		// Link preview worker
 		previewWorker := extract.NewPreviewWorker(storage, 60*time.Second)
@@ -160,7 +166,8 @@ func main() {
 
 		// Digest scheduler (daily at midnight)
 		if digestGen != nil {
-			scheduler := digest.NewScheduler(digestGen, 24*time.Hour)
+			insightsGen := digest.NewInsightsGenerator(storage, llmProvider)
+			scheduler := digest.NewScheduler(digestGen, insightsGen, 24*time.Hour)
 			go scheduler.Start(ctx)
 		}
 	}

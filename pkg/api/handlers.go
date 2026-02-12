@@ -320,6 +320,61 @@ func (h *Handlers) GetStats(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, stats)
 }
 
+func (h *Handlers) ServeMediaThumb(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "id required")
+		return
+	}
+
+	attachment, err := h.store.GetAttachment(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "attachment not found")
+		return
+	}
+
+	// Serve thumbnail if available
+	if attachment.ThumbnailPath != "" {
+		if _, err := os.Stat(attachment.ThumbnailPath); err == nil {
+			w.Header().Set("Content-Type", "image/jpeg")
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			http.ServeFile(w, r, attachment.ThumbnailPath)
+			return
+		}
+	}
+
+	// Fallback: serve original for images
+	if attachment.Downloaded && attachment.LocalPath != "" {
+		if _, err := os.Stat(attachment.LocalPath); err == nil {
+			w.Header().Set("Content-Type", attachment.ContentType)
+			w.Header().Set("Cache-Control", "public, max-age=86400")
+			http.ServeFile(w, r, attachment.LocalPath)
+			return
+		}
+	}
+
+	writeError(w, http.StatusNotFound, "thumbnail not available")
+}
+
+func (h *Handlers) SearchMedia(w http.ResponseWriter, r *http.Request) {
+	query := r.URL.Query().Get("q")
+	if query == "" {
+		writeError(w, http.StatusBadRequest, "query parameter 'q' is required")
+		return
+	}
+	limit := intParam(r, "limit", 50)
+
+	results, err := h.store.SearchMedia(r.Context(), query, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if results == nil {
+		results = []store.MediaSearchResult{}
+	}
+	writeJSON(w, http.StatusOK, results)
+}
+
 func intParam(r *http.Request, key string, fallback int) int {
 	v := r.URL.Query().Get(key)
 	if v == "" {
