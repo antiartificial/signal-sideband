@@ -22,7 +22,7 @@ func (s *Store) ListURLs(ctx context.Context, limit, offset int, domain *string)
 
 	countQuery := "SELECT COUNT(*) FROM urls"
 	dataQuery := `
-		SELECT id, message_id, url, domain, title, description, image_url, fetched, created_at
+		SELECT id, message_id, url, domain, COALESCE(title,''), COALESCE(description,''), COALESCE(image_url,''), fetched, created_at
 		FROM urls
 	`
 
@@ -71,7 +71,7 @@ func (s *Store) ListURLs(ctx context.Context, limit, offset int, domain *string)
 
 func (s *Store) GetUnfetchedURLs(ctx context.Context) ([]URLRecord, error) {
 	query := `
-		SELECT id, message_id, url, domain, title, description, image_url, fetched, created_at
+		SELECT id, message_id, url, domain, COALESCE(title,''), COALESCE(description,''), COALESCE(image_url,''), fetched, created_at
 		FROM urls WHERE fetched = false
 		ORDER BY created_at ASC
 		LIMIT 100

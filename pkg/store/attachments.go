@@ -20,8 +20,8 @@ func (s *Store) SaveAttachment(ctx context.Context, a AttachmentRecord) (string,
 
 func (s *Store) GetAttachment(ctx context.Context, id string) (*AttachmentRecord, error) {
 	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, filename, size,
-			local_path, downloaded, created_at
+		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
+			COALESCE(local_path,''), downloaded, created_at
 		FROM attachments WHERE id = $1
 	`
 	var a AttachmentRecord
@@ -37,8 +37,8 @@ func (s *Store) GetAttachment(ctx context.Context, id string) (*AttachmentRecord
 
 func (s *Store) ListAttachmentsByMessage(ctx context.Context, messageID string) ([]AttachmentRecord, error) {
 	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, filename, size,
-			local_path, downloaded, created_at
+		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
+			COALESCE(local_path,''), downloaded, created_at
 		FROM attachments WHERE message_id = $1
 		ORDER BY created_at ASC
 	`
@@ -89,8 +89,8 @@ func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int, sortB
 	}
 
 	query := fmt.Sprintf(`
-		SELECT id, message_id, signal_attachment_id, content_type, filename, size,
-			local_path, downloaded, created_at
+		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
+			COALESCE(local_path,''), downloaded, created_at
 		FROM attachments
 		ORDER BY %s
 		LIMIT $1 OFFSET $2
@@ -123,8 +123,8 @@ func (s *Store) MarkAttachmentDownloaded(ctx context.Context, id, localPath stri
 
 func (s *Store) GetUndownloadedAttachments(ctx context.Context) ([]AttachmentRecord, error) {
 	query := `
-		SELECT id, message_id, signal_attachment_id, content_type, filename, size,
-			local_path, downloaded, created_at
+		SELECT id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
+			COALESCE(local_path,''), downloaded, created_at
 		FROM attachments WHERE downloaded = false
 		ORDER BY created_at ASC
 		LIMIT 100
