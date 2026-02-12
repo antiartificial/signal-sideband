@@ -26,7 +26,7 @@ func NewPicOfDayGenerator(apiKey, mediaPath string) *PicOfDayGenerator {
 	return &PicOfDayGenerator{
 		apiKey:    apiKey,
 		mediaPath: mediaPath,
-		model:     "gemini-2.0-flash-preview-image-generation",
+		model:     "gemini-2.5-flash-image",
 	}
 }
 
