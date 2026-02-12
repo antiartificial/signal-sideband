@@ -143,13 +143,64 @@ func (s *Store) SemanticSearch(ctx context.Context, embedding []float32, thresho
 }
 
 func (s *Store) FullTextSearch(ctx context.Context, query string, limit int) ([]SearchResult, error) {
+	return s.FilteredFullTextSearch(ctx, query, SearchFilter{}, limit)
+}
+
+func (s *Store) FilteredFullTextSearch(ctx context.Context, query string, filter SearchFilter, limit int) ([]SearchResult, error) {
 	if limit <= 0 {
 		limit = 50
 	}
-	sqlQuery := `SELECT id, signal_id, sender_id, content, group_id, source_uuid,
-		is_outgoing, has_attachments, rank, created_at
-		FROM search_messages_fulltext($1, $2)`
-	rows, err := s.pool.Query(ctx, sqlQuery, query, limit)
+
+	var conditions []string
+	var args []any
+	argIdx := 1
+
+	// Full text match
+	conditions = append(conditions, fmt.Sprintf("m.tsv @@ plainto_tsquery('english', $%d)", argIdx))
+	args = append(args, query)
+	argIdx++
+
+	conditions = append(conditions, "(m.expires_at IS NULL OR m.expires_at > now())")
+
+	if filter.GroupID != nil {
+		conditions = append(conditions, fmt.Sprintf("m.group_id = $%d", argIdx))
+		args = append(args, *filter.GroupID)
+		argIdx++
+	}
+	if filter.SenderID != nil {
+		conditions = append(conditions, fmt.Sprintf("(m.sender_id = $%d OR m.source_uuid = $%d)", argIdx, argIdx))
+		args = append(args, *filter.SenderID)
+		argIdx++
+	}
+	if filter.After != nil {
+		conditions = append(conditions, fmt.Sprintf("m.created_at > $%d", argIdx))
+		args = append(args, *filter.After)
+		argIdx++
+	}
+	if filter.Before != nil {
+		conditions = append(conditions, fmt.Sprintf("m.created_at < $%d", argIdx))
+		args = append(args, *filter.Before)
+		argIdx++
+	}
+	if filter.HasMedia != nil && *filter.HasMedia {
+		conditions = append(conditions, "m.has_attachments = true")
+	}
+
+	where := strings.Join(conditions, " AND ")
+
+	sqlQuery := fmt.Sprintf(`
+		SELECT m.id, m.signal_id, m.sender_id, m.content, m.group_id, m.source_uuid,
+			m.is_outgoing, m.has_attachments,
+			ts_rank(m.tsv, plainto_tsquery('english', $1)) AS rank,
+			m.created_at
+		FROM messages m
+		WHERE %s
+		ORDER BY rank DESC
+		LIMIT $%d
+	`, where, argIdx)
+	args = append(args, limit)
+
+	rows, err := s.pool.Query(ctx, sqlQuery, args...)
 	if err != nil {
 		return nil, err
 	}
@@ -169,6 +220,43 @@ func (s *Store) FullTextSearch(ctx context.Context, query string, limit int) ([]
 		results = append(results, r)
 	}
 	return results, nil
+}
+
+func (s *Store) FilteredSemanticSearch(ctx context.Context, embedding []float32, threshold float64, filter SearchFilter, limit int) ([]SearchResult, error) {
+	// Over-fetch then post-filter
+	fetchLimit := limit * 5
+	if fetchLimit > 200 {
+		fetchLimit = 200
+	}
+
+	results, err := s.SemanticSearch(ctx, embedding, threshold, fetchLimit)
+	if err != nil {
+		return nil, err
+	}
+
+	var filtered []SearchResult
+	for _, r := range results {
+		if filter.GroupID != nil && (r.GroupID == nil || *r.GroupID != *filter.GroupID) {
+			continue
+		}
+		if filter.SenderID != nil && r.SenderID != *filter.SenderID && (r.SourceUUID == nil || *r.SourceUUID != *filter.SenderID) {
+			continue
+		}
+		if filter.After != nil && !r.CreatedAt.After(*filter.After) {
+			continue
+		}
+		if filter.Before != nil && !r.CreatedAt.Before(*filter.Before) {
+			continue
+		}
+		if filter.HasMedia != nil && *filter.HasMedia && !r.HasAttachments {
+			continue
+		}
+		filtered = append(filtered, r)
+		if len(filtered) >= limit {
+			break
+		}
+	}
+	return filtered, nil
 }
 
 func (s *Store) GetMessagesByTimeRange(ctx context.Context, start, end time.Time, groupID *string) ([]MessageRecord, error) {

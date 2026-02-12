@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
-import { searchMessages } from '../lib/api.ts'
+import { searchMessages, getGroups, type SearchFilters } from '../lib/api.ts'
 import Card from '../components/Card.tsx'
 import EmptyState from '../components/EmptyState.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
@@ -10,10 +10,18 @@ export default function Search() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'fulltext' | 'semantic'>('fulltext')
   const [submitted, setSubmitted] = useState('')
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState<SearchFilters>({})
+
+  const { data: groups } = useQuery({
+    queryKey: ['groups'],
+    queryFn: getGroups,
+    enabled: showFilters,
+  })
 
   const { data: results, isLoading } = useQuery({
-    queryKey: ['search', submitted, mode],
-    queryFn: () => searchMessages(submitted, mode),
+    queryKey: ['search', submitted, mode, filters],
+    queryFn: () => searchMessages(submitted, mode, 20, filters),
     enabled: submitted.length > 0,
   })
 
@@ -43,27 +51,98 @@ export default function Search() {
           </button>
         </div>
 
-        {/* Mode toggle */}
-        <div className="flex gap-1 mt-3 bg-gray-100 rounded-lg p-0.5 w-fit">
+        <div className="flex items-center gap-3 mt-3">
+          {/* Mode toggle */}
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-0.5">
+            <button
+              type="button"
+              onClick={() => setMode('fulltext')}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                mode === 'fulltext' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
+              }`}
+            >
+              Full Text
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode('semantic')}
+              className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
+                mode === 'semantic' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
+              }`}
+            >
+              Semantic
+            </button>
+          </div>
+
+          {/* Filter toggle */}
           <button
             type="button"
-            onClick={() => setMode('fulltext')}
-            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-              mode === 'fulltext' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
+            onClick={() => setShowFilters(!showFilters)}
+            className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+              showFilters ? 'border-apple-blue text-apple-blue bg-apple-blue/5' : 'border-apple-border text-apple-secondary'
             }`}
           >
-            Full Text
-          </button>
-          <button
-            type="button"
-            onClick={() => setMode('semantic')}
-            className={`px-3 py-1.5 text-xs rounded-md transition-colors ${
-              mode === 'semantic' ? 'bg-white shadow-sm font-medium' : 'text-apple-secondary'
-            }`}
-          >
-            Semantic
+            Filters
           </button>
         </div>
+
+        {/* Filter panel */}
+        {showFilters && (
+          <div className="mt-3 p-4 bg-gray-50 rounded-xl border border-apple-border space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs text-apple-secondary mb-1">Group</label>
+                <select
+                  value={filters.group_id || ''}
+                  onChange={e => setFilters(f => ({ ...f, group_id: e.target.value || undefined }))}
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                >
+                  <option value="">All groups</option>
+                  {groups?.map(g => (
+                    <option key={g.group_id} value={g.group_id}>{g.name || g.group_id}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs text-apple-secondary mb-1">Sender</label>
+                <input
+                  type="text"
+                  value={filters.sender_id || ''}
+                  onChange={e => setFilters(f => ({ ...f, sender_id: e.target.value || undefined }))}
+                  placeholder="Phone or UUID"
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-apple-secondary mb-1">After</label>
+                <input
+                  type="date"
+                  value={filters.after?.split('T')[0] || ''}
+                  onChange={e => setFilters(f => ({ ...f, after: e.target.value ? e.target.value + 'T00:00:00Z' : undefined }))}
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs text-apple-secondary mb-1">Before</label>
+                <input
+                  type="date"
+                  value={filters.before?.split('T')[0] || ''}
+                  onChange={e => setFilters(f => ({ ...f, before: e.target.value ? e.target.value + 'T23:59:59Z' : undefined }))}
+                  className="w-full px-3 py-2 rounded-lg border border-apple-border bg-white text-sm"
+                />
+              </div>
+            </div>
+            <label className="flex items-center gap-2 text-sm">
+              <input
+                type="checkbox"
+                checked={filters.has_media || false}
+                onChange={e => setFilters(f => ({ ...f, has_media: e.target.checked || undefined }))}
+                className="rounded border-apple-border"
+              />
+              Has media
+            </label>
+          </div>
+        )}
       </form>
 
       {isLoading && <LoadingSpinner message="Searching..." />}

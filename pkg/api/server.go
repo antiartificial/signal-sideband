@@ -18,10 +18,14 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, port string, mediaPath string, webDir ...string) *Server {
-	h := NewHandlers(s, embedder, generator, mediaPath)
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
+	h := NewHandlers(s, embedder, generator, mediaPath, authPassword)
 
 	mux := http.NewServeMux()
+
+	// Auth
+	mux.HandleFunc("GET /api/auth/status", h.AuthStatus)
+	mux.HandleFunc("POST /api/auth/login", h.Login)
 
 	// Messages
 	mux.HandleFunc("GET /api/messages", h.GetMessages)
@@ -65,10 +69,16 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 		})
 	}
 
+	var handler http.Handler = mux
+	if authPassword != "" {
+		handler = authMiddleware(authPassword, handler)
+	}
+	handler = corsMiddleware(handler)
+
 	return &Server{
 		httpServer: &http.Server{
 			Addr:         fmt.Sprintf(":%s", port),
-			Handler:      corsMiddleware(mux),
+			Handler:      handler,
 			ReadTimeout:  15 * time.Second,
 			WriteTimeout: 120 * time.Second,
 		},

@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"fmt"
 )
 
 func (s *Store) SaveAttachment(ctx context.Context, a AttachmentRecord) (string, error) {
@@ -61,7 +62,7 @@ func (s *Store) ListAttachmentsByMessage(ctx context.Context, messageID string) 
 	return attachments, nil
 }
 
-func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int) ([]AttachmentRecord, int, error) {
+func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int, sortBy ...string) ([]AttachmentRecord, int, error) {
 	if limit <= 0 {
 		limit = 50
 	}
@@ -71,13 +72,29 @@ func (s *Store) ListAllAttachments(ctx context.Context, limit, offset int) ([]At
 		return nil, 0, err
 	}
 
-	query := `
+	orderClause := "created_at DESC"
+	if len(sortBy) > 0 {
+		switch sortBy[0] {
+		case "date_asc":
+			orderClause = "created_at ASC"
+		case "size_desc":
+			orderClause = "size DESC"
+		case "size_asc":
+			orderClause = "size ASC"
+		case "type":
+			orderClause = "content_type ASC, created_at DESC"
+		default: // date_desc
+			orderClause = "created_at DESC"
+		}
+	}
+
+	query := fmt.Sprintf(`
 		SELECT id, message_id, signal_attachment_id, content_type, filename, size,
 			local_path, downloaded, created_at
 		FROM attachments
-		ORDER BY created_at DESC
+		ORDER BY %s
 		LIMIT $1 OFFSET $2
-	`
+	`, orderClause)
 	rows, err := s.pool.Query(ctx, query, limit, offset)
 	if err != nil {
 		return nil, 0, err

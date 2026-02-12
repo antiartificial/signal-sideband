@@ -105,6 +105,8 @@ func main() {
 	os.MkdirAll(mediaPath, 0755)
 
 	// 7. Start API server
+	authPassword := os.Getenv("AUTH_PASSWORD")
+
 	apiPort := os.Getenv("API_PORT")
 	if apiPort == "" {
 		apiPort = "3001"
@@ -120,7 +122,7 @@ func main() {
 	}
 
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, apiPort, mediaPath, webDir)
+		apiServer := api.NewServer(storage, embedder, digestGen, apiPort, authPassword, mediaPath, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)

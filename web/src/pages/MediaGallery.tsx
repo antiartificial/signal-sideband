@@ -9,11 +9,12 @@ import { format } from 'date-fns'
 
 export default function MediaGallery() {
   const [offset, setOffset] = useState(0)
+  const [sort, setSort] = useState('date_desc')
   const limit = 24
 
   const { data, isLoading } = useQuery({
-    queryKey: ['media', offset],
-    queryFn: () => getMedia({ limit: String(limit), offset: String(offset) }),
+    queryKey: ['media', offset, sort],
+    queryFn: () => getMedia({ limit: String(limit), offset: String(offset), sort }),
   })
 
   if (isLoading) return <LoadingSpinner />
@@ -29,7 +30,20 @@ export default function MediaGallery() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight mb-6">Media Gallery</h2>
+      <div className="flex items-center justify-between mb-6">
+        <h2 className="text-2xl font-semibold tracking-tight">Media Gallery</h2>
+        <select
+          value={sort}
+          onChange={e => { setSort(e.target.value); setOffset(0) }}
+          className="px-3 py-1.5 rounded-lg border border-apple-border bg-white text-sm"
+        >
+          <option value="date_desc">Newest</option>
+          <option value="date_asc">Oldest</option>
+          <option value="size_desc">Largest</option>
+          <option value="size_asc">Smallest</option>
+          <option value="type">By type</option>
+        </select>
+      </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         {data.data.map(att => {

@@ -14,6 +14,7 @@ services:
     extensions:
       - vector
 secrets:
+  - AUTH_PASSWORD
   - OPENAI_API_KEY
   - XAI_API_KEY
   - SIGNAL_URL
@@ -28,6 +29,10 @@ env:
   DB_PORT: "5432"
   API_PORT: "3001"
   MEDIA_PATH: /data/media
+volumes:
+  - name: media
+    mountPath: /data/media
+    size: 5Gi
 artifacts:
   retain: 3
 replicas: 1

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/subtle"
 	"encoding/json"
 	"net/http"
 	"os"
@@ -13,14 +14,48 @@ import (
 )
 
 type Handlers struct {
-	store     *store.Store
-	embedder  ai.Embedder
-	generator *digest.Generator
-	mediaPath string
+	store        *store.Store
+	embedder     ai.Embedder
+	generator    *digest.Generator
+	mediaPath    string
+	authPassword string
 }
 
-func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, mediaPath string) *Handlers {
-	return &Handlers{store: s, embedder: e, generator: g, mediaPath: mediaPath}
+func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, mediaPath string, authPassword string) *Handlers {
+	return &Handlers{store: s, embedder: e, generator: g, mediaPath: mediaPath, authPassword: authPassword}
+}
+
+type loginRequest struct {
+	Password string `json:"password"`
+}
+
+type loginResponse struct {
+	Token string `json:"token"`
+}
+
+func (h *Handlers) AuthStatus(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]bool{"required": h.authPassword != ""})
+}
+
+func (h *Handlers) Login(w http.ResponseWriter, r *http.Request) {
+	var req loginRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if subtle.ConstantTimeCompare([]byte(req.Password), []byte(h.authPassword)) != 1 {
+		writeError(w, http.StatusUnauthorized, "invalid password")
+		return
+	}
+
+	token, err := generateToken(h.authPassword)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "token generation failed")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, loginResponse{Token: token})
 }
 
 func (h *Handlers) GetMessages(w http.ResponseWriter, r *http.Request) {
@@ -71,6 +106,29 @@ func (h *Handlers) SearchMessages(w http.ResponseWriter, r *http.Request) {
 	mode := r.URL.Query().Get("mode")
 	limit := intParam(r, "limit", 20)
 
+	// Parse search filters
+	var filter store.SearchFilter
+	if v := r.URL.Query().Get("group_id"); v != "" {
+		filter.GroupID = &v
+	}
+	if v := r.URL.Query().Get("sender_id"); v != "" {
+		filter.SenderID = &v
+	}
+	if v := r.URL.Query().Get("after"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			filter.After = &t
+		}
+	}
+	if v := r.URL.Query().Get("before"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			filter.Before = &t
+		}
+	}
+	if r.URL.Query().Get("has_media") == "true" {
+		b := true
+		filter.HasMedia = &b
+	}
+
 	switch mode {
 	case "semantic":
 		embedding, err := h.embedder.Embed(query)
@@ -78,7 +136,7 @@ func (h *Handlers) SearchMessages(w http.ResponseWriter, r *http.Request) {
 			writeError(w, http.StatusInternalServerError, "embedding error: "+err.Error())
 			return
 		}
-		results, err := h.store.SemanticSearch(r.Context(), embedding, 0.5, limit)
+		results, err := h.store.FilteredSemanticSearch(r.Context(), embedding, 0.5, filter, limit)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -89,7 +147,7 @@ func (h *Handlers) SearchMessages(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, results)
 
 	default: // fulltext
-		results, err := h.store.FullTextSearch(r.Context(), query, limit)
+		results, err := h.store.FilteredFullTextSearch(r.Context(), query, filter, limit)
 		if err != nil {
 			writeError(w, http.StatusInternalServerError, err.Error())
 			return
@@ -240,8 +298,9 @@ func (h *Handlers) ServeMedia(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetMedia(w http.ResponseWriter, r *http.Request) {
 	limit := intParam(r, "limit", 50)
 	offset := intParam(r, "offset", 0)
+	sort := r.URL.Query().Get("sort")
 
-	attachments, total, err := h.store.ListAllAttachments(r.Context(), limit, offset)
+	attachments, total, err := h.store.ListAllAttachments(r.Context(), limit, offset, sort)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -92,6 +92,14 @@ type MessageFilter struct {
 	Offset    int
 }
 
+type SearchFilter struct {
+	GroupID  *string
+	SenderID *string
+	After    *time.Time
+	Before   *time.Time
+	HasMedia *bool
+}
+
 type SearchResult struct {
 	ID             string    `json:"id"`
 	SignalID       string    `json:"signal_id"`
