@@ -20,6 +20,7 @@ export default function Dashboard() {
   const [generatingInsight, setGeneratingInsight] = useState(false)
   const [potdKey, setPotdKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
+  const [potdFailed, setPotdFailed] = useState(false)
 
   const lenses = [
     { id: 'default', label: 'Standard', icon: 'fa-newspaper', desc: 'Straight newsletter' },
@@ -54,8 +55,8 @@ export default function Dashboard() {
       const now = new Date()
       const yesterday = subDays(now, 1)
       await generateDigest(
-        format(yesterday, 'yyyy-MM-dd'),
-        format(now, 'yyyy-MM-dd'),
+        format(yesterday, "yyyy-MM-dd'T'HH:mm:ssxxx"),
+        format(now, "yyyy-MM-dd'T'HH:mm:ssxxx"),
         undefined,
         lens === 'default' ? undefined : lens,
       )
@@ -74,6 +75,7 @@ export default function Dashboard() {
     setError(null)
     try {
       await generatePicOfDay()
+      setPotdFailed(false)
       setPotdKey(k => k + 1)
       queryClient.invalidateQueries({ queryKey: ['stats'] })
     } catch (e: any) {
@@ -215,18 +217,19 @@ export default function Dashboard() {
           </button>
         </div>
         <Card className="overflow-hidden">
-          {insight?.image_path ? (
+          {!potdFailed ? (
             <img
               key={potdKey}
               src={`${picOfDayURL()}?v=${potdKey}`}
               alt="Nano banana of the day"
               className="w-full max-h-[400px] object-contain bg-gray-50 dark:bg-white/[0.03]"
+              onError={() => setPotdFailed(true)}
             />
           ) : (
             <div className="py-12 text-center">
               <i className="fawsb fa-image text-4xl text-apple-secondary mb-3 block" />
               <p className="text-sm text-apple-secondary">
-                {insight ? 'No banana yet today. Generate one above.' : 'Generate a daily insight first, then summon the banana.'}
+                {insight ? 'No banana yet. Generate one above.' : 'Generate a daily insight first, then summon the banana.'}
               </p>
             </div>
           )}

@@ -380,19 +380,20 @@ func (h *Handlers) SearchMedia(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *Handlers) ServePicOfDay(w http.ResponseWriter, r *http.Request) {
-	insight, err := h.store.GetLatestInsight(r.Context())
-	if err != nil || insight.ImagePath == "" {
+	// Try latest insight first, then fall back to most recent with an image
+	imagePath, err := h.store.GetLatestPicOfDay(r.Context())
+	if err != nil || imagePath == "" {
 		writeError(w, http.StatusNotFound, "no picture of the day available")
 		return
 	}
 
-	if _, err := os.Stat(insight.ImagePath); os.IsNotExist(err) {
+	if _, err := os.Stat(imagePath); os.IsNotExist(err) {
 		writeError(w, http.StatusNotFound, "image file not found")
 		return
 	}
 
 	w.Header().Set("Cache-Control", "public, max-age=3600")
-	http.ServeFile(w, r, insight.ImagePath)
+	http.ServeFile(w, r, imagePath)
 }
 
 func (h *Handlers) GenerateInsight(w http.ResponseWriter, r *http.Request) {

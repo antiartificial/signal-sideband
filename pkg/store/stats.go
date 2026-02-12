@@ -100,6 +100,16 @@ func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes js
 	return id, err
 }
 
+func (s *Store) GetLatestPicOfDay(ctx context.Context) (string, error) {
+	var imagePath string
+	err := s.pool.QueryRow(ctx, `
+		SELECT image_path FROM daily_insights
+		WHERE image_path IS NOT NULL AND image_path != ''
+		ORDER BY created_at DESC LIMIT 1
+	`).Scan(&imagePath)
+	return imagePath, err
+}
+
 func (s *Store) SetInsightImagePath(ctx context.Context, id, imagePath string) error {
 	_, err := s.pool.Exec(ctx, `UPDATE daily_insights SET image_path = $2 WHERE id = $1`, id, imagePath)
 	return err
