@@ -6,80 +6,80 @@ import (
 )
 
 type MessageRecord struct {
-	ID             string          `db:"id"`
-	SignalID       string          `db:"signal_id"`
-	SenderID       string          `db:"sender_id"`
-	Content        string          `db:"content"`
-	Embedding      []float32       `db:"embedding"`
-	ExpiresAt      *time.Time      `db:"expires_at"`
-	GroupID        *string         `db:"group_id"`
-	SourceUUID     *string         `db:"source_uuid"`
-	IsOutgoing     bool            `db:"is_outgoing"`
-	ViewOnce       bool            `db:"view_once"`
-	HasAttachments bool            `db:"has_attachments"`
-	RawJSON        json.RawMessage `db:"raw_json"`
-	CreatedAt      time.Time       `db:"created_at"`
+	ID             string          `db:"id" json:"id"`
+	SignalID       string          `db:"signal_id" json:"signal_id"`
+	SenderID       string          `db:"sender_id" json:"sender_id"`
+	Content        string          `db:"content" json:"content"`
+	Embedding      []float32       `db:"embedding" json:"-"`
+	ExpiresAt      *time.Time      `db:"expires_at" json:"expires_at,omitempty"`
+	GroupID        *string         `db:"group_id" json:"group_id,omitempty"`
+	SourceUUID     *string         `db:"source_uuid" json:"source_uuid,omitempty"`
+	IsOutgoing     bool            `db:"is_outgoing" json:"is_outgoing"`
+	ViewOnce       bool            `db:"view_once" json:"view_once"`
+	HasAttachments bool            `db:"has_attachments" json:"has_attachments"`
+	RawJSON        json.RawMessage `db:"raw_json" json:"-"`
+	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
 }
 
 type GroupRecord struct {
-	ID          string    `db:"id"`
-	GroupID     string    `db:"group_id"`
-	Name        string    `db:"name"`
-	Description string    `db:"description"`
-	AvatarPath  string    `db:"avatar_path"`
-	MemberCount int       `db:"member_count"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          string    `db:"id" json:"id"`
+	GroupID     string    `db:"group_id" json:"group_id"`
+	Name        string    `db:"name" json:"name"`
+	Description string    `db:"description" json:"description"`
+	AvatarPath  string    `db:"avatar_path" json:"avatar_path,omitempty"`
+	MemberCount int       `db:"member_count" json:"member_count"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type ContactRecord struct {
-	ID          string    `db:"id"`
-	SourceUUID  string    `db:"source_uuid"`
-	PhoneNumber string    `db:"phone_number"`
-	ProfileName string    `db:"profile_name"`
-	AvatarPath  string    `db:"avatar_path"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          string    `db:"id" json:"id"`
+	SourceUUID  string    `db:"source_uuid" json:"source_uuid"`
+	PhoneNumber string    `db:"phone_number" json:"phone_number"`
+	ProfileName string    `db:"profile_name" json:"profile_name"`
+	AvatarPath  string    `db:"avatar_path" json:"avatar_path,omitempty"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
 }
 
 type AttachmentRecord struct {
-	ID                 string    `db:"id"`
-	MessageID          string    `db:"message_id"`
-	SignalAttachmentID string    `db:"signal_attachment_id"`
-	ContentType        string    `db:"content_type"`
-	Filename           string    `db:"filename"`
-	Size               int64     `db:"size"`
-	LocalPath          string    `db:"local_path"`
-	Downloaded         bool      `db:"downloaded"`
-	CreatedAt          time.Time `db:"created_at"`
+	ID                 string    `db:"id" json:"id"`
+	MessageID          string    `db:"message_id" json:"message_id"`
+	SignalAttachmentID string    `db:"signal_attachment_id" json:"signal_attachment_id"`
+	ContentType        string    `db:"content_type" json:"content_type"`
+	Filename           string    `db:"filename" json:"filename"`
+	Size               int64     `db:"size" json:"size"`
+	LocalPath          string    `db:"local_path" json:"local_path,omitempty"`
+	Downloaded         bool      `db:"downloaded" json:"downloaded"`
+	CreatedAt          time.Time `db:"created_at" json:"created_at"`
 }
 
 type URLRecord struct {
-	ID          string    `db:"id"`
-	MessageID   string    `db:"message_id"`
-	URL         string    `db:"url"`
-	Domain      string    `db:"domain"`
-	Title       string    `db:"title"`
-	Description string    `db:"description"`
-	ImageURL    string    `db:"image_url"`
-	Fetched     bool      `db:"fetched"`
-	CreatedAt   time.Time `db:"created_at"`
+	ID          string    `db:"id" json:"id"`
+	MessageID   string    `db:"message_id" json:"message_id"`
+	URL         string    `db:"url" json:"url"`
+	Domain      string    `db:"domain" json:"domain"`
+	Title       string    `db:"title" json:"title"`
+	Description string    `db:"description" json:"description"`
+	ImageURL    string    `db:"image_url" json:"image_url,omitempty"`
+	Fetched     bool      `db:"fetched" json:"fetched"`
+	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }
 
 type DigestRecord struct {
-	ID          string          `db:"id"`
-	Title       string          `db:"title"`
-	Summary     string          `db:"summary"`
-	Topics      json.RawMessage `db:"topics"`
-	Decisions   json.RawMessage `db:"decisions"`
-	ActionItems json.RawMessage `db:"action_items"`
-	PeriodStart time.Time       `db:"period_start"`
-	PeriodEnd   time.Time       `db:"period_end"`
-	GroupID     *string         `db:"group_id"`
-	LLMProvider string          `db:"llm_provider"`
-	LLMModel    string          `db:"llm_model"`
-	TokenCount  int             `db:"token_count"`
-	CreatedAt   time.Time       `db:"created_at"`
+	ID          string          `db:"id" json:"id"`
+	Title       string          `db:"title" json:"title"`
+	Summary     string          `db:"summary" json:"summary"`
+	Topics      json.RawMessage `db:"topics" json:"topics"`
+	Decisions   json.RawMessage `db:"decisions" json:"decisions"`
+	ActionItems json.RawMessage `db:"action_items" json:"action_items"`
+	PeriodStart time.Time       `db:"period_start" json:"period_start"`
+	PeriodEnd   time.Time       `db:"period_end" json:"period_end"`
+	GroupID     *string         `db:"group_id" json:"group_id,omitempty"`
+	LLMProvider string          `db:"llm_provider" json:"llm_provider"`
+	LLMModel    string          `db:"llm_model" json:"llm_model"`
+	TokenCount  int             `db:"token_count" json:"token_count"`
+	CreatedAt   time.Time       `db:"created_at" json:"created_at"`
 }
 
 type MessageFilter struct {

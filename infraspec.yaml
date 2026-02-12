@@ -1,0 +1,36 @@
+app: signal-sideband
+role: webserver
+port: 3001
+healthcheck: /health
+deploy: true
+hosts:
+  external: sideband.slopistry.com
+  internal: signal-sideband-service
+build:
+  dockerfile: Dockerfile
+services:
+  postgres:
+    database: signal_sideband
+    extensions:
+      - vector
+secrets:
+  - OPENAI_API_KEY
+  - XAI_API_KEY
+  - SIGNAL_URL
+  - SIGNAL_API_URL
+  - SIGNAL_NUMBER
+env:
+  LLM_PROVIDER: xai
+  DB_HOST: host.minikube.internal
+  DB_USER: norn
+  DB_PASSWORD: norn
+  DB_NAME: signal_sideband
+  DB_PORT: "5432"
+  API_PORT: "3001"
+  MEDIA_PATH: /data/media
+artifacts:
+  retain: 3
+replicas: 1
+alerts:
+  window: 5m
+  threshold: 3

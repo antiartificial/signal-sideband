@@ -3,7 +3,7 @@ services:
     image: bbernhard/signal-cli-rest-api:0.97
     container_name: signal-sideband-cli
     environment:
-      - MODE=normal
+      - MODE=native
     ports:
       - "8080:8080"
     volumes:

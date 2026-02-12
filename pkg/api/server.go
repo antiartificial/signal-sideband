@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
 	"signal-sideband/pkg/ai"
@@ -17,7 +18,7 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, port string, mediaPath string) *Server {
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, port string, mediaPath string, webDir ...string) *Server {
 	h := NewHandlers(s, embedder, generator, mediaPath)
 
 	mux := http.NewServeMux()
@@ -43,6 +44,26 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 
 	// Stats
 	mux.HandleFunc("GET /api/stats", h.GetStats)
+
+	// Health
+	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"status":"ok"}`))
+	})
+
+	// Serve static frontend if web directory exists
+	if len(webDir) > 0 && webDir[0] != "" {
+		dir := webDir[0]
+		fs := http.FileServer(http.Dir(dir))
+		mux.HandleFunc("GET /", func(w http.ResponseWriter, r *http.Request) {
+			// Try the actual file first; fall back to index.html for SPA routing
+			if _, err := os.Stat(dir + r.URL.Path); os.IsNotExist(err) {
+				http.ServeFile(w, r, dir+"/index.html")
+				return
+			}
+			fs.ServeHTTP(w, r)
+		})
+	}
 
 	return &Server{
 		httpServer: &http.Server{

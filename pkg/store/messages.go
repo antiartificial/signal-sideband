@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	pgvector "github.com/pgvector/pgvector-go"
 )
 
 func (s *Store) SaveMessage(ctx context.Context, msg MessageRecord) (string, error) {
@@ -15,9 +17,16 @@ func (s *Store) SaveMessage(ctx context.Context, msg MessageRecord) (string, err
 		ON CONFLICT (signal_id) DO NOTHING
 		RETURNING id
 	`
+	// Wrap embedding for pgvector
+	var vec *pgvector.Vector
+	if len(msg.Embedding) > 0 {
+		v := pgvector.NewVector(msg.Embedding)
+		vec = &v
+	}
+
 	var id string
 	err := s.pool.QueryRow(ctx, query,
-		msg.SignalID, msg.SenderID, msg.Content, msg.Embedding, msg.ExpiresAt,
+		msg.SignalID, msg.SenderID, msg.Content, vec, msg.ExpiresAt,
 		msg.GroupID, msg.SourceUUID, msg.IsOutgoing, msg.ViewOnce, msg.HasAttachments, msg.RawJSON,
 	).Scan(&id)
 	if err != nil {
@@ -110,7 +119,8 @@ func (s *Store) SemanticSearch(ctx context.Context, embedding []float32, thresho
 			is_outgoing, has_attachments, similarity, created_at
 		FROM match_messages($1, $2, $3)
 	`
-	rows, err := s.pool.Query(ctx, query, embedding, threshold, limit)
+	vec := pgvector.NewVector(embedding)
+	rows, err := s.pool.Query(ctx, query, vec, threshold, limit)
 	if err != nil {
 		return nil, err
 	}

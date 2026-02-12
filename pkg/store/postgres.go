@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	pgvector "github.com/pgvector/pgvector-go"
 	pgxvector "github.com/pgvector/pgvector-go/pgx"
 )
 
@@ -32,7 +33,8 @@ func NewStore(ctx context.Context, connString string) (*Store, error) {
 
 func (s *Store) SearchSimilar(ctx context.Context, embedding []float32, threshold float64, limit int) ([]string, error) {
 	query := `SELECT content FROM match_messages($1, $2, $3)`
-	rows, err := s.pool.Query(ctx, query, embedding, threshold, limit)
+	vec := pgvector.NewVector(embedding)
+	rows, err := s.pool.Query(ctx, query, vec, threshold, limit)
 	if err != nil {
 		return nil, err
 	}

@@ -19,6 +19,12 @@ func NewProvider(name string) (Provider, error) {
 			return nil, fmt.Errorf("OPENAI_API_KEY not set")
 		}
 		return NewOpenAIProvider(key), nil
+	case "xai", "grok":
+		key := os.Getenv("XAI_API_KEY")
+		if key == "" {
+			return nil, fmt.Errorf("XAI_API_KEY not set")
+		}
+		return NewXAIProvider(key), nil
 	default:
 		return nil, fmt.Errorf("unknown LLM provider: %s", name)
 	}

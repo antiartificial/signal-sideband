@@ -3,3 +3,4 @@ signal-data/
 /media/
 web/node_modules/
 web/dist/
+/signal-sideband

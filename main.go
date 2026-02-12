@@ -110,8 +110,17 @@ func main() {
 		apiPort = "3001"
 	}
 
+	// Web directory for static frontend
+	webDir := os.Getenv("WEB_DIR")
+	if webDir == "" {
+		// Default: check for web/dist next to the binary
+		if _, err := os.Stat("./web/dist/index.html"); err == nil {
+			webDir = "./web/dist"
+		}
+	}
+
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, apiPort, mediaPath)
+		apiServer := api.NewServer(storage, embedder, digestGen, apiPort, mediaPath, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)
@@ -161,30 +170,41 @@ func main() {
 		}()
 	}
 
-	// 10. Connect Signal WebSocket
-	if err := client.Connect(); err != nil {
-		log.Fatalf("Failed to connect to Signal: %v", err)
-	}
+	// 10. Connect Signal WebSocket (non-fatal: retries in background)
+	go func() {
+		for {
+			if err := client.Connect(); err != nil {
+				log.Printf("Signal connection failed: %v (retrying in 30s)", err)
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(30 * time.Second):
+					continue
+				}
+			}
+			log.Println("Signal connected")
+			// Read messages until disconnected
+			for msg := range client.Messages() {
+				handleMessage(ctx, msg, storage, embedder, signalAPI)
+			}
+			// If we get here, the channel closed — reconnect
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(5 * time.Second):
+			}
+		}
+	}()
 	defer client.Close()
 
 	log.Println("Signal Sideband started. Press Ctrl+C to exit.")
 
-	// 11. Main loop
+	// 11. Wait for shutdown
 	stop := make(chan os.Signal, 1)
 	signal.Notify(stop, syscall.SIGINT, syscall.SIGTERM)
-
-	msgChan := client.Messages()
-
-	for {
-		select {
-		case <-stop:
-			log.Println("Shutting down...")
-			cancel()
-			return
-		case msg := <-msgChan:
-			handleMessage(ctx, msg, storage, embedder, signalAPI)
-		}
-	}
+	<-stop
+	log.Println("Shutting down...")
+	cancel()
 }
 
 func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {

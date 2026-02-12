@@ -2,8 +2,12 @@ package signal
 
 import (
 	"encoding/json"
+	"fmt"
+	"io"
 	"log"
+	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -12,6 +16,7 @@ import (
 type Client struct {
 	url       string
 	conn      *websocket.Conn
+	httpURL   string // set when using HTTP polling mode
 	msgChan   chan SignalMessage
 	closeChan chan struct{}
 }
@@ -34,16 +39,98 @@ func (c *Client) Connect() error {
 		return err
 	}
 
-	log.Printf("Connecting to %s", u.String())
+	// HTTP(S) scheme → use long-polling
+	if u.Scheme == "http" || u.Scheme == "https" {
+		log.Printf("Connecting to %s (HTTP polling)", u.String())
+		// Verify the endpoint is reachable
+		resp, err := http.Get(u.String())
+		if err != nil {
+			return fmt.Errorf("http poll: %w", err)
+		}
+		resp.Body.Close()
+		c.httpURL = u.String()
+		go c.pollLoop()
+		return nil
+	}
+
+	// WS(S) scheme → use WebSocket
+	log.Printf("Connecting to %s (WebSocket)", u.String())
 	conn, _, err := websocket.DefaultDialer.Dial(u.String(), nil)
 	if err != nil {
 		return err
 	}
 	c.conn = conn
-
-	// Start reading loop
 	go c.readLoop()
 	return nil
+}
+
+func (c *Client) pollLoop() {
+	for {
+		select {
+		case <-c.closeChan:
+			return
+		default:
+		}
+
+		resp, err := http.Get(c.httpURL)
+		if err != nil {
+			log.Printf("poll error: %v, retrying in 5s...", err)
+			select {
+			case <-c.closeChan:
+				return
+			case <-time.After(5 * time.Second):
+			}
+			continue
+		}
+
+		body, err := io.ReadAll(resp.Body)
+		resp.Body.Close()
+		if err != nil || len(body) == 0 {
+			continue
+		}
+
+		// Response can be a single message or an array
+		body = bytes_TrimSpace(body)
+		if len(body) == 0 {
+			continue
+		}
+
+		if body[0] == '[' {
+			var msgs []SignalMessage
+			if err := json.Unmarshal(body, &msgs); err != nil {
+				// Try as array of raw envelopes
+				log.Printf("poll json array unmarshal error: %v", err)
+				continue
+			}
+			for _, msg := range msgs {
+				if msg.Envelope.DataMessage != nil ||
+					(msg.Envelope.SyncMessage != nil && msg.Envelope.SyncMessage.SentMessage != nil) {
+					c.msgChan <- msg
+				}
+			}
+		} else if body[0] == '{' {
+			var msg SignalMessage
+			if err := json.Unmarshal(body, &msg); err != nil {
+				log.Printf("poll json unmarshal error: %v", err)
+				continue
+			}
+			if msg.Envelope.DataMessage != nil ||
+				(msg.Envelope.SyncMessage != nil && msg.Envelope.SyncMessage.SentMessage != nil) {
+				c.msgChan <- msg
+			}
+		}
+
+		// Small delay between polls to avoid hammering
+		select {
+		case <-c.closeChan:
+			return
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
+
+func bytes_TrimSpace(b []byte) []byte {
+	return []byte(strings.TrimSpace(string(b)))
 }
 
 func (c *Client) readLoop() {
