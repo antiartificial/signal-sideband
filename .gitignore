@@ -1,0 +1,5 @@
+.env
+signal-data/
+/media/
+web/node_modules/
+web/dist/

@@ -57,7 +57,7 @@ func TestSaveAndSearch(t *testing.T) {
 		Embedding: embedding,
 	}
 
-	err := s.SaveMessage(ctx, msg)
+	_, err := s.SaveMessage(ctx, msg)
 	if err != nil {
 		t.Fatalf("SaveMessage failed: %v", err)
 	}
@@ -92,7 +92,7 @@ func TestReaper(t *testing.T) {
 		ExpiresAt: &expiration,
 	}
 
-	if err := s.SaveMessage(ctx, msg); err != nil {
+	if _, err := s.SaveMessage(ctx, msg); err != nil {
 		t.Fatalf("Failed to save expired message: %v", err)
 	}
 

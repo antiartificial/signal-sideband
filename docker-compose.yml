@@ -1,11 +1,28 @@
 services:
   signal-cli:
-    image: bbernhard/signal-cli-rest-api:0.14.3
+    image: bbernhard/signal-cli-rest-api:0.97
     container_name: signal-sideband-cli
     environment:
-      - MODE=normal # or 'json-rpc' if we wanted that, but normal provides the REST API + Websocket
+      - MODE=normal
     ports:
-      - "8080:8080" # REST API and Websocket
+      - "8080:8080"
     volumes:
       - ./signal-data:/home/.local/share/signal-cli
     restart: unless-stopped
+
+  postgres:
+    image: pgvector/pgvector:pg16
+    container_name: signal-sideband-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: signal_sideband
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./migrations:/docker-entrypoint-initdb.d
+    restart: unless-stopped
+
+volumes:
+  pgdata:

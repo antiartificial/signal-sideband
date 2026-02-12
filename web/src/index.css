@@ -1,0 +1,35 @@
+@import "tailwindcss";
+
+@theme {
+  --color-apple-bg: #f5f5f7;
+  --color-apple-text: #1d1d1f;
+  --color-apple-secondary: #86868b;
+  --color-apple-blue: #0071e3;
+  --color-apple-blue-hover: #0077ED;
+  --color-apple-border: #d2d2d7;
+  --color-apple-card: #ffffff;
+  --color-apple-sidebar: #fbfbfd;
+  --font-sans: -apple-system, BlinkMacSystemFont, 'SF Pro Display', system-ui, sans-serif;
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: var(--color-apple-bg);
+  color: var(--color-apple-text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Markdown content styling */
+.prose h1 { font-size: 1.5rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; }
+.prose h2 { font-size: 1.25rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.5rem; }
+.prose h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1rem; margin-bottom: 0.5rem; }
+.prose p { margin-bottom: 0.75rem; line-height: 1.7; }
+.prose ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose ol { list-style: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+.prose li { margin-bottom: 0.25rem; line-height: 1.6; }
+.prose strong { font-weight: 600; }
+.prose code { background: var(--color-apple-bg); padding: 0.125rem 0.375rem; border-radius: 0.25rem; font-size: 0.875em; }
+.prose blockquote { border-left: 3px solid var(--color-apple-border); padding-left: 1rem; color: var(--color-apple-secondary); }
+.prose a { color: var(--color-apple-blue); text-decoration: none; }
+.prose a:hover { text-decoration: underline; }
