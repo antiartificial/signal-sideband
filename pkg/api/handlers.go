@@ -553,6 +553,22 @@ func (h *Handlers) GeneratePicOfDay(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func (h *Handlers) GetSnapshots(w http.ResponseWriter, r *http.Request) {
+	days := intParam(r, "days", 7)
+	if days > 30 {
+		days = 30
+	}
+	snapshots, err := h.store.GetDailySnapshots(r.Context(), days)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if snapshots == nil {
+		snapshots = []store.DailyInsight{}
+	}
+	writeJSON(w, http.StatusOK, snapshots)
+}
+
 func intParam(r *http.Request, key string, fallback int) int {
 	v := r.URL.Query().Get(key)
 	if v == "" {

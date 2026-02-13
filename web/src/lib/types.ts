@@ -6,7 +6,25 @@ export interface DailyInsight {
   quote_sender: string
   quote_created_at: string | null
   image_path: string
+  superlatives?: Superlative[]
+  snapshot: DaySnapshot | null
+  snapshot_date: string | null
   created_at: string
+}
+
+export interface DaySnapshot {
+  message_count: number
+  active_senders: number
+  busiest_hour: number
+  crews: Record<string, { sender_id: string; count: number }[]>
+  top_pairs: { sender_a: string; sender_b: string; count: number }[]
+  verb_leader: { sender_id: string; count: number; samples: string[] } | null
+  link_of_day: { url: string; title: string; sender_id: string } | null
+  yesterday_ref: { quote?: string; link?: { url: string; title: string; sender_id: string } } | null
+  is_weekly: boolean
+  weekly_total?: number
+  busiest_day?: string
+  busiest_day_count?: number
 }
 
 export interface MediaAnalysis {

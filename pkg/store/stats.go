@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"time"
 )
 
 func (s *Store) GetStats(ctx context.Context) (*Stats, error) {
@@ -77,11 +78,13 @@ func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
 	var di DailyInsight
 	err := s.pool.QueryRow(ctx, `
 		SELECT id, overview, themes, COALESCE(quote_content,''), COALESCE(quote_sender,''),
-			quote_created_at, COALESCE(image_path,''), COALESCE(superlatives, '[]'::jsonb), created_at
+			quote_created_at, COALESCE(image_path,''), COALESCE(superlatives, '[]'::jsonb),
+			COALESCE(snapshot, '{}'::jsonb), snapshot_date, created_at
 		FROM daily_insights ORDER BY created_at DESC LIMIT 1
 	`).Scan(
 		&di.ID, &di.Overview, &di.Themes, &di.QuoteContent, &di.QuoteSender,
-		&di.QuoteCreatedAt, &di.ImagePath, &di.Superlatives, &di.CreatedAt,
+		&di.QuoteCreatedAt, &di.ImagePath, &di.Superlatives,
+		&di.Snapshot, &di.SnapshotDate, &di.CreatedAt,
 	)
 	if err != nil {
 		return nil, err
@@ -89,14 +92,14 @@ func (s *Store) GetLatestInsight(ctx context.Context) (*DailyInsight, error) {
 	return &di, nil
 }
 
-func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes json.RawMessage, quoteContent, quoteSender string, superlatives json.RawMessage) (string, error) {
+func (s *Store) SaveDailyInsight(ctx context.Context, overview string, themes json.RawMessage, quoteContent, quoteSender string, superlatives json.RawMessage, snapshot json.RawMessage, snapshotDate *time.Time) (string, error) {
 	query := `
-		INSERT INTO daily_insights (overview, themes, quote_content, quote_sender, superlatives)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO daily_insights (overview, themes, quote_content, quote_sender, superlatives, snapshot, snapshot_date)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id
 	`
 	var id string
-	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender, superlatives).Scan(&id)
+	err := s.pool.QueryRow(ctx, query, overview, themes, quoteContent, quoteSender, superlatives, snapshot, snapshotDate).Scan(&id)
 	return id, err
 }
 

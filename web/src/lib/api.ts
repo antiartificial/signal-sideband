@@ -1,4 +1,4 @@
-import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord, MediaSearchResult, CerebroGraph, CerebroConceptDetail, CerebroExtraction, ContactRecord } from './types.ts'
+import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord, MediaSearchResult, CerebroGraph, CerebroConceptDetail, CerebroExtraction, ContactRecord, DailyInsight } from './types.ts'
 
 const BASE = '/api'
 const TOKEN_KEY = 'auth_token'
@@ -129,6 +129,10 @@ export function generateInsight() {
   return fetchJSON<any>(`${BASE}/insights/generate`, {
     method: 'POST',
   })
+}
+
+export function getSnapshots(days = 7) {
+  return fetchJSON<DailyInsight[]>(`${BASE}/snapshots?days=${days}`)
 }
 
 export function generatePicOfDay() {

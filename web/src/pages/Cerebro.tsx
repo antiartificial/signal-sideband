@@ -1,8 +1,9 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import cytoscape from 'cytoscape'
 import { getCerebroGraph, getCerebroConcept, enrichCerebroConcept, extractCerebro } from '../lib/api.ts'
 import type { CerebroConceptDetail, CerebroEnrichment, PerplexityEnrichment, GrokXEnrichment, GrokBooksEnrichment } from '../lib/types.ts'
+import { format } from 'date-fns'
 
 const CATEGORY_COLORS: Record<string, string> = {
   topic: '#3B82F6',
@@ -30,6 +31,8 @@ export default function Cerebro() {
   const [showPanel, setShowPanel] = useState(false)
   const [extracting, setExtracting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [playing, setPlaying] = useState(false)
+  const [timeFilter, setTimeFilter] = useState<number>(Date.now())
 
   const { data: graph, isLoading } = useQuery({
     queryKey: ['cerebro-graph'],
@@ -41,6 +44,7 @@ export default function Cerebro() {
     onSuccess: (data) => {
       setSelectedConcept(data)
       queryClient.invalidateQueries({ queryKey: ['cerebro-graph'] })
+      queryClient.invalidateQueries({ queryKey: ['cerebro-concept', data.id] })
     },
   })
 
@@ -59,13 +63,77 @@ export default function Cerebro() {
 
   const handleNodeTap = useCallback(async (id: string) => {
     try {
-      const detail = await getCerebroConcept(id)
+      const detail = await queryClient.fetchQuery({
+        queryKey: ['cerebro-concept', id],
+        queryFn: () => getCerebroConcept(id),
+        staleTime: 5 * 60 * 1000,
+      })
       setSelectedConcept(detail)
       setShowPanel(true)
     } catch {
       // ignore
     }
-  }, [])
+  }, [queryClient])
+
+  // Compute time range from graph data
+  const timeRange = useMemo(() => {
+    if (!graph?.concepts.length) return null
+    const times = graph.concepts.map(c => new Date(c.first_seen).getTime())
+    const min = Math.min(...times)
+    const max = Math.max(...times)
+    return { min, max }
+  }, [graph])
+
+  // Set initial time filter to max when graph loads
+  useEffect(() => {
+    if (timeRange) {
+      setTimeFilter(timeRange.max)
+    }
+  }, [timeRange])
+
+  // Time filter — show/hide nodes based on first_seen
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy || !graph) return
+    cy.batch(() => {
+      cy.nodes().forEach(node => {
+        const concept = graph.concepts.find(c => c.id === node.id())
+        if (!concept) return
+        const firstSeen = new Date(concept.first_seen).getTime()
+        if (firstSeen <= timeFilter) {
+          node.style('display', 'element')
+        } else {
+          node.style('display', 'none')
+        }
+      })
+      cy.edges().forEach(edge => {
+        const src = edge.source()
+        const tgt = edge.target()
+        if (src.style('display') === 'none' || tgt.style('display') === 'none') {
+          edge.style('display', 'none')
+        } else {
+          edge.style('display', 'element')
+        }
+      })
+    })
+  }, [timeFilter, graph])
+
+  // Play animation — auto-advance timeFilter
+  useEffect(() => {
+    if (!playing || !timeRange) return
+    const step = (timeRange.max - timeRange.min) / 60
+    const interval = setInterval(() => {
+      setTimeFilter(prev => {
+        const next = prev + step
+        if (next >= timeRange.max) {
+          setPlaying(false)
+          return timeRange.max
+        }
+        return next
+      })
+    }, 100)
+    return () => clearInterval(interval)
+  }, [playing, timeRange])
 
   // Initialize Cytoscape
   useEffect(() => {
@@ -103,7 +171,9 @@ export default function Cerebro() {
       container: containerRef.current,
       elements,
       boxSelectionEnabled: false,
-      wheelSensitivity: 0.3,
+      minZoom: 0.15,
+      maxZoom: 4,
+      wheelSensitivity: 0.4,
       style: [
         {
           selector: 'node',
@@ -228,6 +298,37 @@ export default function Cerebro() {
         </div>
       )}
 
+      {/* Time slider */}
+      {!isEmpty && timeRange && (
+        <div className="flex items-center gap-3 px-4 py-2 border-b border-apple-border shrink-0">
+          <i className="fawsb fa-clock-rotate-left text-apple-secondary text-sm" />
+          <input
+            type="range"
+            min={timeRange.min}
+            max={timeRange.max}
+            value={timeFilter}
+            onChange={e => setTimeFilter(Number(e.target.value))}
+            className="flex-1 accent-apple-blue"
+          />
+          <span className="text-xs text-apple-secondary w-20 text-right font-mono">
+            {format(new Date(timeFilter), 'MMM d')}
+          </span>
+          <button
+            onClick={() => {
+              if (playing) {
+                setPlaying(false)
+              } else {
+                setTimeFilter(timeRange.min)
+                setPlaying(true)
+              }
+            }}
+            className="text-xs text-apple-blue hover:text-blue-500 transition-colors px-1"
+          >
+            <i className={`fawsb ${playing ? 'fa-pause' : 'fa-play'} text-xs`} />
+          </button>
+        </div>
+      )}
+
       {/* Main content */}
       <div className="flex-1 flex min-h-0 relative">
         {isLoading ? (
@@ -254,7 +355,45 @@ export default function Cerebro() {
             <div
               ref={containerRef}
               className={`flex-1 min-h-0 ${showPanel ? 'md:mr-80' : ''} transition-all`}
+              style={{ touchAction: 'none' }}
             />
+
+            {/* Zoom controls */}
+            <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-1">
+              <button
+                onClick={() => {
+                  const cy = cyRef.current
+                  if (!cy) return
+                  const w = cy.width(), h = cy.height()
+                  cy.zoom({ level: cy.zoom() * 1.3, renderedPosition: { x: w / 2, y: h / 2 } })
+                }}
+                className="w-8 h-8 flex items-center justify-center bg-apple-sidebar border border-apple-border rounded-t-lg
+                  text-apple-secondary hover:text-apple-text transition-colors"
+              >
+                <i className="fawsb fa-plus text-xs" />
+              </button>
+              <button
+                onClick={() => {
+                  const cy = cyRef.current
+                  if (!cy) return
+                  const w = cy.width(), h = cy.height()
+                  cy.zoom({ level: cy.zoom() / 1.3, renderedPosition: { x: w / 2, y: h / 2 } })
+                }}
+                className="w-8 h-8 flex items-center justify-center bg-apple-sidebar border border-apple-border
+                  text-apple-secondary hover:text-apple-text transition-colors"
+              >
+                <i className="fawsb fa-minus text-xs" />
+              </button>
+              <button
+                onClick={() => {
+                  cyRef.current?.fit(undefined, 40)
+                }}
+                className="w-8 h-8 flex items-center justify-center bg-apple-sidebar border border-apple-border rounded-b-lg
+                  text-apple-secondary hover:text-apple-text transition-colors"
+              >
+                <i className="fawsb fa-expand text-xs" />
+              </button>
+            </div>
 
             {/* Desktop side panel */}
             {showPanel && selectedConcept && (

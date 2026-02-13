@@ -56,6 +56,7 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 
 	// Insights
 	mux.HandleFunc("POST /api/insights/generate", h.GenerateInsight)
+	mux.HandleFunc("GET /api/snapshots", h.GetSnapshots)
 
 	// Picture of the Day
 	mux.HandleFunc("GET /api/potd", h.ServePicOfDay)

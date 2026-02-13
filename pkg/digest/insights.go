@@ -118,7 +118,24 @@ func (g *InsightsGenerator) GenerateDailyInsights(ctx context.Context) error {
 	superlatives := g.store.GetSuperlatives(ctx)
 	superlativesJSON, _ := json.Marshal(superlatives)
 
-	id, err := g.store.SaveDailyInsight(ctx, parsed.Overview, themes, quoteContent, quoteSender, superlativesJSON)
+	// Compute snapshot data
+	snapshotDate := start
+	snapshot, snapErr := g.store.ComputeDaySnapshot(ctx, start)
+	var snapshotJSON json.RawMessage
+	if snapErr == nil && snapshot != nil {
+		if now.Weekday() == time.Sunday {
+			weeklyTotal, busiestDay, busiestDayCount := g.store.ComputeWeeklyExtras(ctx, start)
+			snapshot.IsWeekly = true
+			snapshot.WeeklyTotal = weeklyTotal
+			snapshot.BusiestDay = busiestDay
+			snapshot.BusiestDayCount = busiestDayCount
+		}
+		snapshotJSON, _ = json.Marshal(snapshot)
+	} else {
+		snapshotJSON = json.RawMessage(`{}`)
+	}
+
+	id, err := g.store.SaveDailyInsight(ctx, parsed.Overview, themes, quoteContent, quoteSender, superlativesJSON, snapshotJSON, &snapshotDate)
 	if err != nil {
 		return fmt.Errorf("save insight: %w", err)
 	}

@@ -137,7 +137,52 @@ type DailyInsight struct {
 	QuoteCreatedAt *time.Time      `db:"quote_created_at" json:"quote_created_at,omitempty"`
 	ImagePath      string          `db:"image_path" json:"image_path,omitempty"`
 	Superlatives   json.RawMessage `db:"superlatives" json:"superlatives,omitempty"`
+	Snapshot       json.RawMessage `db:"snapshot" json:"snapshot,omitempty"`
+	SnapshotDate   *time.Time      `db:"snapshot_date" json:"snapshot_date,omitempty"`
 	CreatedAt      time.Time       `db:"created_at" json:"created_at"`
+}
+
+type DaySnapshot struct {
+	MessageCount  int                     `json:"message_count"`
+	ActiveSenders int                     `json:"active_senders"`
+	BusiestHour   int                     `json:"busiest_hour"`
+	Crews         map[string][]CrewMember `json:"crews"`
+	TopPairs      []ConversationPair      `json:"top_pairs"`
+	VerbLeader    *VerbLeader             `json:"verb_leader"`
+	LinkOfDay     *LinkOfDay              `json:"link_of_day"`
+	YesterdayRef  *YesterdayRef           `json:"yesterday_ref"`
+	IsWeekly      bool                    `json:"is_weekly"`
+	WeeklyTotal   int                     `json:"weekly_total,omitempty"`
+	BusiestDay    string                  `json:"busiest_day,omitempty"`
+	BusiestDayCount int                   `json:"busiest_day_count,omitempty"`
+}
+
+type CrewMember struct {
+	SenderID string `json:"sender_id"`
+	Count    int    `json:"count"`
+}
+
+type ConversationPair struct {
+	SenderA string `json:"sender_a"`
+	SenderB string `json:"sender_b"`
+	Count   int    `json:"count"`
+}
+
+type VerbLeader struct {
+	SenderID string   `json:"sender_id"`
+	Count    int      `json:"count"`
+	Samples  []string `json:"samples"`
+}
+
+type LinkOfDay struct {
+	URL      string `json:"url"`
+	Title    string `json:"title"`
+	SenderID string `json:"sender_id"`
+}
+
+type YesterdayRef struct {
+	Quote string     `json:"quote,omitempty"`
+	Link  *LinkOfDay `json:"link,omitempty"`
 }
 
 type Superlative struct {
