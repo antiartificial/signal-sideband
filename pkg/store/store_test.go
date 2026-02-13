@@ -97,7 +97,7 @@ func TestReaper(t *testing.T) {
 	}
 
 	// 2. Run Reaper
-	if err := s.Reaper(ctx); err != nil {
+	if _, err := s.Reaper(ctx); err != nil {
 		t.Fatalf("Reaper failed: %v", err)
 	}
 

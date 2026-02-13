@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { isAuthenticated, getAuthStatus } from './lib/api.ts'
 import AppShell from './components/AppShell.tsx'
+import About from './pages/About.tsx'
 import Cerebro from './pages/Cerebro.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Digests from './pages/Digests.tsx'
@@ -44,6 +45,7 @@ export default function App() {
         <Route path="/search" element={<Search />} />
         <Route path="/media" element={<MediaGallery />} />
         <Route path="/urls" element={<URLCollection />} />
+        <Route path="/about" element={<About />} />
         <Route path="/settings" element={<Settings />} />
       </Routes>
     </AppShell>

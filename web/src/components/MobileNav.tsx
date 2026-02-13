@@ -8,6 +8,7 @@ const tabs = [
   { to: '/search', label: 'Search', icon: 'fa-magnifying-glass' },
   { to: '/media', label: 'Media', icon: 'fa-images' },
   { to: '/urls', label: 'Links', icon: 'fa-link' },
+  { to: '/about', label: 'About', icon: 'fa-diagram-project' },
   { to: '/settings', label: 'Settings', icon: 'fa-gear' },
 ]
 

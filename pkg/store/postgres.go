@@ -51,16 +51,41 @@ func (s *Store) SearchSimilar(ctx context.Context, embedding []float32, threshol
 	return results, nil
 }
 
-func (s *Store) Reaper(ctx context.Context) error {
+func (s *Store) Reaper(ctx context.Context) ([]string, error) {
+	// Collect media paths from expired messages before deleting
+	pathQuery := `
+		SELECT a.local_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE m.expires_at < NOW() AND a.local_path != ''
+		UNION
+		SELECT a.thumbnail_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE m.expires_at < NOW() AND a.thumbnail_path != ''
+	`
+	rows, err := s.pool.Query(ctx, pathQuery)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		paths = append(paths, p)
+	}
+
 	query := `DELETE FROM messages WHERE expires_at < NOW()`
 	res, err := s.pool.Exec(ctx, query)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	if rows := res.RowsAffected(); rows > 0 {
-		fmt.Printf("Reaper: Deleted %d expired messages\n", rows)
+	if n := res.RowsAffected(); n > 0 {
+		fmt.Printf("Reaper: Deleted %d expired messages\n", n)
 	}
-	return nil
+	return paths, nil
 }
 
 func (s *Store) Close() {

@@ -9,6 +9,7 @@ require (
 	github.com/pgvector/pgvector-go v0.3.0
 	github.com/sashabaranov/go-openai v1.41.2
 	github.com/twilio/twilio-go v1.30.0
+	golang.org/x/image v0.36.0
 )
 
 require (
@@ -19,7 +20,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/image v0.36.0 // indirect
 	golang.org/x/sync v0.19.0 // indirect
 	golang.org/x/text v0.34.0 // indirect
 )

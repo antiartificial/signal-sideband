@@ -17,12 +17,17 @@ type Envelope struct {
 }
 
 type DataMessage struct {
-	Timestamp        int64        `json:"timestamp"`
-	Message          string       `json:"message"`
-	ExpiresInSeconds int          `json:"expiresInSeconds"`
-	ViewOnce         bool         `json:"viewOnce"`
-	GroupInfo        *GroupInfo   `json:"groupInfo,omitempty"`
-	Attachments      []Attachment `json:"attachments,omitempty"`
+	Timestamp        int64         `json:"timestamp"`
+	Message          string        `json:"message"`
+	ExpiresInSeconds int           `json:"expiresInSeconds"`
+	ViewOnce         bool          `json:"viewOnce"`
+	GroupInfo        *GroupInfo    `json:"groupInfo,omitempty"`
+	Attachments      []Attachment  `json:"attachments,omitempty"`
+	RemoteDelete     *RemoteDelete `json:"remoteDelete,omitempty"`
+}
+
+type RemoteDelete struct {
+	Timestamp int64 `json:"timestamp"`
 }
 
 type SyncMessage struct {

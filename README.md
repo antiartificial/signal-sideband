@@ -71,6 +71,10 @@ Deployed via [Norn](https://github.com/antiartificial/norn) with auto-deploy on 
 
 Migrations run on every deploy via `for f in migrations/*.sql`. All migration files use `IF NOT EXISTS` / `ADD COLUMN IF NOT EXISTS` to be idempotent. The `norn` DB user must own all tables (transferred via `ALTER TABLE ... OWNER TO norn`).
 
+## Documentation
+
+- **[Signal Events](docs/EVENTS.md)** — what signal-cli events we capture, how we use them, and the privacy model
+
 ## API endpoints
 
 | Method | Path | Description |

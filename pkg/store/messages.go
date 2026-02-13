@@ -259,6 +259,39 @@ func (s *Store) FilteredSemanticSearch(ctx context.Context, embedding []float32,
 	return filtered, nil
 }
 
+func (s *Store) DeleteMessageBySignalID(ctx context.Context, signalID string) ([]string, error) {
+	// Collect media paths before deleting
+	pathQuery := `
+		SELECT a.local_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE m.signal_id = $1 AND a.local_path != ''
+		UNION
+		SELECT a.thumbnail_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE m.signal_id = $1 AND a.thumbnail_path != ''
+	`
+	rows, err := s.pool.Query(ctx, pathQuery, signalID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return nil, err
+		}
+		paths = append(paths, p)
+	}
+
+	_, err = s.pool.Exec(ctx, `DELETE FROM messages WHERE signal_id = $1`, signalID)
+	if err != nil {
+		return nil, err
+	}
+	return paths, nil
+}
+
 func (s *Store) PurgeMessagesNotInGroup(ctx context.Context, groupID string) (int, []string, error) {
 	// Collect file paths before deleting
 	pathQuery := `

@@ -202,8 +202,14 @@ func main() {
 				case <-ctx.Done():
 					return
 				case <-ticker.C:
-					if err := storage.Reaper(ctx); err != nil {
+					paths, err := storage.Reaper(ctx)
+					if err != nil {
 						log.Printf("Reaper error: %v", err)
+					}
+					for _, p := range paths {
+						if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+							log.Printf("Reaper: failed to remove %s: %v", p, err)
+						}
 					}
 				}
 			}
@@ -355,6 +361,23 @@ func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.St
 		if groupID == nil || *groupID != filterGroupID {
 			return
 		}
+	}
+
+	// Handle remote delete ("delete for everyone")
+	if dataMsg.RemoteDelete != nil && storage != nil {
+		deleteSignalID := fmt.Sprintf("%d", dataMsg.RemoteDelete.Timestamp)
+		paths, err := storage.DeleteMessageBySignalID(ctx, deleteSignalID)
+		if err != nil {
+			log.Printf("Remote delete error: %v", err)
+		} else {
+			log.Printf("Remote delete: removed message %s", deleteSignalID)
+			for _, p := range paths {
+				if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+					log.Printf("Remote delete: failed to remove %s: %v", p, err)
+				}
+			}
+		}
+		return
 	}
 
 	if len(dataMsg.Attachments) > 0 {

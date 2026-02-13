@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
-import { getStats, getMessages, generateDigest, picOfDayURL, generatePicOfDay, generateInsight } from '../lib/api.ts'
+import { getStats, getMessages, generateDigest, generateInsight } from '../lib/api.ts'
 import { useContacts } from '../lib/useContacts.ts'
 import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
@@ -18,11 +18,8 @@ export default function Dashboard() {
   })
   const [generating, setGenerating] = useState(false)
   const [activeLens, setActiveLens] = useState<string | null>(null)
-  const [generatingPotd, setGeneratingPotd] = useState(false)
   const [generatingInsight, setGeneratingInsight] = useState(false)
-  const [potdKey, setPotdKey] = useState(0)
   const [error, setError] = useState<string | null>(null)
-  const [potdFailed, setPotdFailed] = useState(false)
 
   const lenses = [
     { id: 'default', label: 'Standard', icon: 'fa-newspaper', desc: 'Straight newsletter' },
@@ -69,21 +66,6 @@ export default function Dashboard() {
     } finally {
       setGenerating(false)
       setActiveLens(null)
-    }
-  }
-
-  const handleGeneratePotd = async () => {
-    setGeneratingPotd(true)
-    setError(null)
-    try {
-      await generatePicOfDay()
-      setPotdFailed(false)
-      setPotdKey(k => k + 1)
-      queryClient.invalidateQueries({ queryKey: ['stats'] })
-    } catch (e: any) {
-      showError(`Banana generation failed: ${e.message}`)
-    } finally {
-      setGeneratingPotd(false)
     }
   }
 
@@ -199,44 +181,6 @@ export default function Dashboard() {
           </Card>
         </div>
       )}
-
-      {/* Nano Banana — Picture of the Day */}
-      <div className="mb-8">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-medium">
-            <i className="fawsb fa-image text-apple-secondary mr-2" />
-            Nano Banana of the Day
-          </h3>
-          <button
-            onClick={handleGeneratePotd}
-            disabled={generatingPotd || !insight}
-            className="flex items-center gap-2 px-3 py-1.5 rounded-lg border border-apple-border bg-apple-card
-              text-sm text-apple-secondary hover:text-apple-blue hover:border-apple-blue/50
-              active:scale-95 transition-all duration-200 disabled:opacity-50"
-          >
-            <i className={`fawsb ${generatingPotd ? 'fa-sparkles animate-pulse' : 'fa-wand-magic-sparkles'}`} />
-            {generatingPotd ? 'Generating...' : 'New banana'}
-          </button>
-        </div>
-        <Card className="overflow-hidden">
-          {!potdFailed ? (
-            <img
-              key={potdKey}
-              src={`${picOfDayURL()}?v=${potdKey}`}
-              alt="Nano banana of the day"
-              className="w-full max-h-[400px] object-contain bg-gray-50 dark:bg-white/[0.03]"
-              onError={() => setPotdFailed(true)}
-            />
-          ) : (
-            <div className="py-12 text-center">
-              <i className="fawsb fa-image text-4xl text-apple-secondary mb-3 block" />
-              <p className="text-sm text-apple-secondary">
-                {insight ? 'No banana yet. Generate one above.' : 'Generate a daily insight first, then summon the banana.'}
-              </p>
-            </div>
-          )}
-        </Card>
-      </div>
 
       {/* Digest lenses — fortune cookie style */}
       <div className="mb-8">
