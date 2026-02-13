@@ -6,7 +6,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="flex h-screen bg-apple-bg transition-colors duration-300">
       {/* Desktop sidebar */}
-      <div className="hidden md:block">
+      <div className="hidden md:flex md:h-full">
         <Sidebar />
       </div>
       <main className="flex-1 overflow-y-auto pb-20 md:pb-0">

@@ -23,6 +23,7 @@ secrets:
   - SIGNAL_NUMBER
 env:
   LLM_PROVIDER: xai
+  DATABASE_URL: postgres://norn:norn@host.minikube.internal:5432/signal_sideband?sslmode=disable
   DB_HOST: host.minikube.internal
   DB_USER: norn
   DB_PASSWORD: norn

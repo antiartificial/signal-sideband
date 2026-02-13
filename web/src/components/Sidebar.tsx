@@ -23,7 +23,7 @@ export default function Sidebar() {
   })
 
   return (
-    <aside className="w-56 bg-apple-sidebar border-r border-apple-border flex flex-col shrink-0 transition-colors duration-300">
+    <aside className="w-56 h-full bg-apple-sidebar border-r border-apple-border flex flex-col shrink-0 transition-colors duration-300">
       <div className="px-5 py-6 animate-fade-in">
         <h1 className="text-lg font-semibold tracking-tight text-apple-text">
           Signal Sideband

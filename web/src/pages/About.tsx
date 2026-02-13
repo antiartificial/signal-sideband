@@ -192,7 +192,7 @@ function MermaidChart({ chart, id }: { chart: string; id: string }) {
       <div
         ref={containerRef}
         className="overflow-hidden cursor-grab active:cursor-grabbing py-4"
-        style={{ touchAction: 'none' }}
+        style={{ touchAction: 'none', minHeight: '300px' }}
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
