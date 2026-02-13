@@ -34,9 +34,16 @@ volumes:
   - name: media
     mountPath: /data/media
     size: 5Gi
+migrations:
+  command: for f in migrations/*.sql; do psql -U norn -d signal_sideband -f "$f"; done
+  database: signal_sideband
 artifacts:
   retain: 3
 replicas: 1
 alerts:
   window: 5m
   threshold: 3
+repo:
+  url: http://gitea.default.svc.cluster.local:3000/norn/signal-sideband.git
+  branch: master
+  autoDeploy: true
