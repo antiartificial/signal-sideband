@@ -168,6 +168,12 @@ export function extractCerebro() {
   })
 }
 
+// Version
+
+export function getVersion() {
+  return fetchJSON<{ version: string }>(`${BASE}/version`)
+}
+
 // Contacts
 
 export function getContacts() {

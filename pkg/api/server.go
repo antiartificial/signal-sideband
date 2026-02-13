@@ -20,7 +20,7 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, insightsGen *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, cerebroExtractor *cerebro.Extractor, cerebroEnricher *cerebro.Enricher, port string, authPassword string, mediaPath string, webDir ...string) *Server {
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, insightsGen *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, cerebroExtractor *cerebro.Extractor, cerebroEnricher *cerebro.Enricher, port string, authPassword string, mediaPath string, version string, webDir ...string) *Server {
 	h := NewHandlers(s, embedder, generator, insightsGen, picGen, cerebroExtractor, cerebroEnricher, mediaPath, authPassword)
 
 	mux := http.NewServeMux()
@@ -70,10 +70,12 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 	// Stats
 	mux.HandleFunc("GET /api/stats", h.GetStats)
 
-	// Health
+	// Health & version
 	mux.HandleFunc("GET /health", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"status":"ok"}`))
+		writeJSON(w, http.StatusOK, map[string]string{"status": "ok", "version": version})
+	})
+	mux.HandleFunc("GET /api/version", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, http.StatusOK, map[string]string{"version": version})
 	})
 
 	// Serve static frontend if web directory exists

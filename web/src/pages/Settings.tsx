@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getContacts, updateContactAlias } from '../lib/api.ts'
+import { getContacts, updateContactAlias, getVersion } from '../lib/api.ts'
 import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 
@@ -9,6 +9,11 @@ export default function Settings() {
   const { data: contacts, isLoading } = useQuery({
     queryKey: ['contacts'],
     queryFn: getContacts,
+  })
+  const { data: versionInfo } = useQuery({
+    queryKey: ['version'],
+    queryFn: getVersion,
+    staleTime: Infinity,
   })
 
   const [editingUUID, setEditingUUID] = useState<string | null>(null)
@@ -124,6 +129,11 @@ export default function Settings() {
           </tbody>
         </table>
       </Card>
+
+      {/* Version info */}
+      <div className="mt-8 text-xs text-apple-secondary text-center font-mono">
+        Signal Sideband {versionInfo?.version ?? '...'}
+      </div>
     </div>
   )
 }
