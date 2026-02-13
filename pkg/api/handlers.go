@@ -9,23 +9,26 @@ import (
 	"time"
 
 	"signal-sideband/pkg/ai"
+	"signal-sideband/pkg/cerebro"
 	"signal-sideband/pkg/digest"
 	"signal-sideband/pkg/media"
 	"signal-sideband/pkg/store"
 )
 
 type Handlers struct {
-	store        *store.Store
-	embedder     ai.Embedder
-	generator    *digest.Generator
-	insightsGen  *digest.InsightsGenerator
-	picGen       *media.PicOfDayGenerator
-	mediaPath    string
-	authPassword string
+	store             *store.Store
+	embedder          ai.Embedder
+	generator         *digest.Generator
+	insightsGen       *digest.InsightsGenerator
+	picGen            *media.PicOfDayGenerator
+	cerebroExtractor  *cerebro.Extractor
+	cerebroEnricher   *cerebro.Enricher
+	mediaPath         string
+	authPassword      string
 }
 
-func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, ig *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, mediaPath string, authPassword string) *Handlers {
-	return &Handlers{store: s, embedder: e, generator: g, insightsGen: ig, picGen: picGen, mediaPath: mediaPath, authPassword: authPassword}
+func NewHandlers(s *store.Store, e ai.Embedder, g *digest.Generator, ig *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, cerebroExtractor *cerebro.Extractor, cerebroEnricher *cerebro.Enricher, mediaPath string, authPassword string) *Handlers {
+	return &Handlers{store: s, embedder: e, generator: g, insightsGen: ig, picGen: picGen, cerebroExtractor: cerebroExtractor, cerebroEnricher: cerebroEnricher, mediaPath: mediaPath, authPassword: authPassword}
 }
 
 type loginRequest struct {
@@ -463,4 +466,92 @@ func intParam(r *http.Request, key string, fallback int) int {
 		return fallback
 	}
 	return n
+}
+
+// Cerebro handlers
+
+func (h *Handlers) GetCerebroGraph(w http.ResponseWriter, r *http.Request) {
+	limit := intParam(r, "limit", 50)
+	var groupID *string
+	if v := r.URL.Query().Get("group_id"); v != "" {
+		groupID = &v
+	}
+	var since *time.Time
+	if v := r.URL.Query().Get("since"); v != "" {
+		if t, err := time.Parse(time.RFC3339, v); err == nil {
+			since = &t
+		}
+	}
+
+	graph, err := h.store.GetCerebroGraph(r.Context(), groupID, since, limit)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, graph)
+}
+
+func (h *Handlers) GetCerebroConcept(w http.ResponseWriter, r *http.Request) {
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "id required")
+		return
+	}
+
+	detail, err := h.store.GetConceptDetail(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "concept not found")
+		return
+	}
+	writeJSON(w, http.StatusOK, detail)
+}
+
+func (h *Handlers) EnrichCerebroConcept(w http.ResponseWriter, r *http.Request) {
+	if h.cerebroEnricher == nil {
+		writeError(w, http.StatusServiceUnavailable, "enrichment providers not configured")
+		return
+	}
+
+	id := r.PathValue("id")
+	if id == "" {
+		writeError(w, http.StatusBadRequest, "id required")
+		return
+	}
+
+	detail, err := h.store.GetConceptDetail(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusNotFound, "concept not found")
+		return
+	}
+
+	if err := h.cerebroEnricher.EnrichConcept(r.Context(), detail.CerebroConcept); err != nil {
+		writeError(w, http.StatusInternalServerError, "enrichment failed: "+err.Error())
+		return
+	}
+
+	// Re-fetch with enrichments
+	updated, err := h.store.GetConceptDetail(r.Context(), id)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, updated)
+}
+
+func (h *Handlers) ExtractCerebro(w http.ResponseWriter, r *http.Request) {
+	if h.cerebroExtractor == nil {
+		writeError(w, http.StatusServiceUnavailable, "LLM provider not configured")
+		return
+	}
+
+	end := time.Now()
+	start := end.Add(-24 * time.Hour)
+
+	extraction, err := h.cerebroExtractor.Extract(r.Context(), start, end)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, extraction)
 }

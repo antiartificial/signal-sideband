@@ -150,3 +150,59 @@ type Stats struct {
 	DailyInsight  *DailyInsight  `json:"daily_insight,omitempty"`
 	Superlatives  []Superlative  `json:"superlatives,omitempty"`
 }
+
+// Cerebro Knowledge Graph
+
+type CerebroConcept struct {
+	ID           string          `db:"id" json:"id"`
+	Name         string          `db:"name" json:"name"`
+	Category     string          `db:"category" json:"category"`
+	Description  string          `db:"description" json:"description"`
+	MentionCount int             `db:"mention_count" json:"mention_count"`
+	FirstSeen    time.Time       `db:"first_seen" json:"first_seen"`
+	LastSeen     time.Time       `db:"last_seen" json:"last_seen"`
+	Metadata     json.RawMessage `db:"metadata" json:"metadata"`
+	GroupID      *string         `db:"group_id" json:"group_id,omitempty"`
+	CreatedAt    time.Time       `db:"created_at" json:"created_at"`
+}
+
+type CerebroEdge struct {
+	ID       string `db:"id" json:"id"`
+	SourceID string `db:"source_id" json:"source_id"`
+	TargetID string `db:"target_id" json:"target_id"`
+	Relation string `db:"relation" json:"relation"`
+	Weight   int    `db:"weight" json:"weight"`
+}
+
+type CerebroEnrichment struct {
+	ID        string          `db:"id" json:"id"`
+	ConceptID string          `db:"concept_id" json:"concept_id"`
+	Source    string          `db:"source" json:"source"`
+	Content   json.RawMessage `db:"content" json:"content"`
+	ExpiresAt *time.Time      `db:"expires_at" json:"expires_at,omitempty"`
+	CreatedAt time.Time       `db:"created_at" json:"created_at"`
+}
+
+type CerebroExtraction struct {
+	ID           string    `db:"id" json:"id"`
+	BatchStart   time.Time `db:"batch_start" json:"batch_start"`
+	BatchEnd     time.Time `db:"batch_end" json:"batch_end"`
+	MessageCount int       `db:"message_count" json:"message_count"`
+	ConceptCount int       `db:"concept_count" json:"concept_count"`
+	EdgeCount    int       `db:"edge_count" json:"edge_count"`
+	LLMProvider  string    `db:"llm_provider" json:"llm_provider"`
+	LLMModel     string    `db:"llm_model" json:"llm_model"`
+	TokenCount   int       `db:"token_count" json:"token_count"`
+	CreatedAt    time.Time `db:"created_at" json:"created_at"`
+}
+
+type CerebroGraph struct {
+	Concepts []CerebroConcept `json:"concepts"`
+	Edges    []CerebroEdge    `json:"edges"`
+}
+
+type CerebroConceptDetail struct {
+	CerebroConcept
+	Edges       []CerebroEdge       `json:"edges"`
+	Enrichments []CerebroEnrichment `json:"enrichments"`
+}

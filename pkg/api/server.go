@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"signal-sideband/pkg/ai"
+	"signal-sideband/pkg/cerebro"
 	"signal-sideband/pkg/digest"
 	"signal-sideband/pkg/media"
 	"signal-sideband/pkg/store"
@@ -19,8 +20,8 @@ type Server struct {
 	handlers   *Handlers
 }
 
-func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, insightsGen *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, port string, authPassword string, mediaPath string, webDir ...string) *Server {
-	h := NewHandlers(s, embedder, generator, insightsGen, picGen, mediaPath, authPassword)
+func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator, insightsGen *digest.InsightsGenerator, picGen *media.PicOfDayGenerator, cerebroExtractor *cerebro.Extractor, cerebroEnricher *cerebro.Enricher, port string, authPassword string, mediaPath string, webDir ...string) *Server {
+	h := NewHandlers(s, embedder, generator, insightsGen, picGen, cerebroExtractor, cerebroEnricher, mediaPath, authPassword)
 
 	mux := http.NewServeMux()
 
@@ -55,6 +56,12 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 	// Picture of the Day
 	mux.HandleFunc("GET /api/potd", h.ServePicOfDay)
 	mux.HandleFunc("POST /api/potd/generate", h.GeneratePicOfDay)
+
+	// Cerebro
+	mux.HandleFunc("GET /api/cerebro/graph", h.GetCerebroGraph)
+	mux.HandleFunc("GET /api/cerebro/concepts/{id}", h.GetCerebroConcept)
+	mux.HandleFunc("POST /api/cerebro/concepts/{id}/enrich", h.EnrichCerebroConcept)
+	mux.HandleFunc("POST /api/cerebro/extract", h.ExtractCerebro)
 
 	// Stats
 	mux.HandleFunc("GET /api/stats", h.GetStats)

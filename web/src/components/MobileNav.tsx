@@ -3,6 +3,7 @@ import { useTheme } from '../lib/theme.ts'
 
 const tabs = [
   { to: '/', label: 'Home', icon: 'fa-house' },
+  { to: '/cerebro', label: 'Cerebro', icon: 'fa-circle-nodes' },
   { to: '/digests', label: 'Digests', icon: 'fa-newspaper' },
   { to: '/search', label: 'Search', icon: 'fa-magnifying-glass' },
   { to: '/media', label: 'Media', icon: 'fa-images' },
@@ -22,7 +23,7 @@ export default function MobileNav() {
             to={tab.to}
             end={tab.to === '/'}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] min-w-[48px]
+              `flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] min-w-[40px]
               transition-all duration-200 active:scale-95 ${
                 isActive
                   ? 'text-apple-blue font-semibold'
@@ -36,7 +37,7 @@ export default function MobileNav() {
         ))}
         <button
           onClick={toggleTheme}
-          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] min-w-[48px]
+          className="flex flex-col items-center gap-0.5 px-3 py-1.5 rounded-lg text-[10px] min-w-[40px]
             text-apple-secondary transition-all duration-200 active:scale-95"
         >
           <i className={`fawsb ${theme === 'dark' ? 'fa-sun' : 'fa-moon'} text-lg`} />

@@ -128,3 +128,76 @@ export interface PaginatedResponse<T> {
   limit: number
   offset: number
 }
+
+// Cerebro Knowledge Graph
+
+export interface CerebroConcept {
+  id: string
+  name: string
+  category: 'topic' | 'person' | 'place' | 'media' | 'event' | 'idea'
+  description: string
+  mention_count: number
+  first_seen: string
+  last_seen: string
+  metadata: Record<string, unknown>
+  group_id: string | null
+  created_at: string
+}
+
+export interface CerebroEdge {
+  id: string
+  source_id: string
+  target_id: string
+  relation: string
+  weight: number
+}
+
+export interface CerebroEnrichment {
+  id: string
+  concept_id: string
+  source: 'perplexity' | 'grok_x' | 'grok_books'
+  content: PerplexityEnrichment | GrokXEnrichment | GrokBooksEnrichment | Record<string, unknown>
+  expires_at: string | null
+  created_at: string
+}
+
+export interface PerplexityEnrichment {
+  summary: string
+  related_topics: string[]
+  key_facts: string[]
+  suggested_exploration: string[]
+}
+
+export interface GrokXEnrichment {
+  trending_posts: { summary: string; context: string }[]
+  sentiment: string
+  trending_score: string
+}
+
+export interface GrokBooksEnrichment {
+  books: { title: string; author: string; relevance: string }[]
+  articles: { title: string; source: string; relevance: string }[]
+}
+
+export interface CerebroGraph {
+  concepts: CerebroConcept[]
+  edges: CerebroEdge[]
+}
+
+export interface CerebroConceptDetail extends CerebroConcept {
+  edges: CerebroEdge[]
+  enrichments: CerebroEnrichment[]
+}
+
+export interface CerebroExtraction {
+  id: string
+  batch_start: string
+  batch_end: string
+  message_count: number
+  concept_count: number
+  edge_count: number
+  llm_provider: string
+  llm_model: string
+  token_count: number
+  created_at: string
+}

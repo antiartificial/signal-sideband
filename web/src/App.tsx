@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Routes, Route } from 'react-router-dom'
 import { isAuthenticated, getAuthStatus } from './lib/api.ts'
 import AppShell from './components/AppShell.tsx'
+import Cerebro from './pages/Cerebro.tsx'
 import Dashboard from './pages/Dashboard.tsx'
 import Digests from './pages/Digests.tsx'
 import DigestView from './pages/DigestView.tsx'
@@ -36,6 +37,7 @@ export default function App() {
     <AppShell>
       <Routes>
         <Route path="/" element={<Dashboard />} />
+        <Route path="/cerebro" element={<Cerebro />} />
         <Route path="/digests" element={<Digests />} />
         <Route path="/digests/:id" element={<DigestView />} />
         <Route path="/search" element={<Search />} />

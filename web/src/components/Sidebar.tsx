@@ -3,6 +3,7 @@ import { useTheme } from '../lib/theme.ts'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: 'fa-house' },
+  { to: '/cerebro', label: 'Cerebro', icon: 'fa-circle-nodes' },
   { to: '/digests', label: 'Digests', icon: 'fa-newspaper' },
   { to: '/search', label: 'Search', icon: 'fa-magnifying-glass' },
   { to: '/media', label: 'Media', icon: 'fa-images' },

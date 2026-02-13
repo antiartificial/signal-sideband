@@ -25,6 +25,12 @@ func NewProvider(name string) (Provider, error) {
 			return nil, fmt.Errorf("XAI_API_KEY not set")
 		}
 		return NewXAIProvider(key), nil
+	case "perplexity":
+		key := os.Getenv("PERPLEXITY_API_KEY")
+		if key == "" {
+			return nil, fmt.Errorf("PERPLEXITY_API_KEY not set")
+		}
+		return NewPerplexityProvider(key), nil
 	default:
 		return nil, fmt.Errorf("unknown LLM provider: %s", name)
 	}

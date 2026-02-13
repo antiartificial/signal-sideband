@@ -12,6 +12,7 @@ import (
 
 	"signal-sideband/pkg/ai"
 	"signal-sideband/pkg/api"
+	"signal-sideband/pkg/cerebro"
 	"signal-sideband/pkg/digest"
 	"signal-sideband/pkg/extract"
 	"signal-sideband/pkg/llm"
@@ -134,8 +135,30 @@ func main() {
 		insightsGen = digest.NewInsightsGenerator(storage, llmProvider, picGen)
 	}
 
+	// Setup Cerebro knowledge graph
+	var cerebroExtractor *cerebro.Extractor
+	var cerebroEnricher *cerebro.Enricher
+	if llmProvider != nil && storage != nil {
+		cerebroExtractor = cerebro.NewExtractor(storage, llmProvider)
+	}
+	// Perplexity provider for enrichment
+	var perplexityProvider llm.Provider
+	if key := os.Getenv("PERPLEXITY_API_KEY"); key != "" {
+		perplexityProvider = llm.NewPerplexityProvider(key)
+		log.Println("Perplexity provider enabled for Cerebro enrichment")
+	}
+	// Grok/XAI provider for enrichment (reuse XAI_API_KEY)
+	var grokProvider llm.Provider
+	if key := os.Getenv("XAI_API_KEY"); key != "" {
+		grokProvider = llm.NewXAIProvider(key)
+	}
+	if storage != nil && (perplexityProvider != nil || grokProvider != nil) {
+		cerebroEnricher = cerebro.NewEnricher(storage, perplexityProvider, grokProvider)
+		log.Println("Cerebro enrichment enabled")
+	}
+
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, insightsGen, picGen, apiPort, authPassword, mediaPath, webDir)
+		apiServer := api.NewServer(storage, embedder, digestGen, insightsGen, picGen, cerebroExtractor, cerebroEnricher, apiPort, authPassword, mediaPath, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)
@@ -181,6 +204,13 @@ func main() {
 		if digestGen != nil {
 			scheduler := digest.NewScheduler(digestGen, insightsGen, 24*time.Hour)
 			go scheduler.Start(ctx)
+		}
+
+		// Cerebro knowledge graph worker (every 6 hours)
+		if cerebroExtractor != nil {
+			cerebroWorker := cerebro.NewWorker(cerebroExtractor, cerebroEnricher, 6*time.Hour)
+			go cerebroWorker.Start(ctx)
+			log.Println("Cerebro knowledge graph worker started")
 		}
 	}
 
