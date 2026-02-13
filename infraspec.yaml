@@ -30,6 +30,7 @@ env:
   DB_PORT: "5432"
   API_PORT: "3001"
   MEDIA_PATH: /data/media
+  FILTER_GROUP_ID: group.dmNUVGNFalVjQ003VWd6ZHF3NW54dCtQNkswaHhzMjBGQjh6cFRKemliST0=
 volumes:
   - name: media
     mountPath: /data/media
