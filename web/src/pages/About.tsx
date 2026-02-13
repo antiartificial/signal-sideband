@@ -142,6 +142,8 @@ function MermaidChart({ chart, id }: { chart: string; id: string }) {
   const svgRef = useRef<HTMLDivElement>(null)
   const [scale, setScale] = useState(1)
   const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const translateRef = useRef(translate)
+  translateRef.current = translate
   const dragRef = useRef<{ startX: number; startY: number; startTx: number; startTy: number } | null>(null)
 
   useEffect(() => {
@@ -154,16 +156,30 @@ function MermaidChart({ chart, id }: { chart: string; id: string }) {
     })
   }, [chart, id])
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault()
-    const delta = e.deltaY > 0 ? 0.9 : 1.1
-    setScale(s => Math.min(Math.max(s * delta, 0.3), 3))
+  // Native wheel listener (passive: false) for macOS trackpad support
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      if (e.ctrlKey || e.metaKey) {
+        // Pinch-to-zoom on trackpad (or ctrl+scroll with mouse)
+        const delta = e.deltaY > 0 ? 0.95 : 1.05
+        setScale(s => Math.min(Math.max(s * delta, 0.3), 3))
+      } else {
+        // Two-finger swipe → pan
+        setTranslate(t => ({ x: t.x - e.deltaX, y: t.y - e.deltaY }))
+      }
+    }
+    el.addEventListener('wheel', onWheel, { passive: false })
+    return () => el.removeEventListener('wheel', onWheel)
   }, [])
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     (e.target as HTMLElement).setPointerCapture(e.pointerId)
-    dragRef.current = { startX: e.clientX, startY: e.clientY, startTx: translate.x, startTy: translate.y }
-  }, [translate])
+    const t = translateRef.current
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startTx: t.x, startTy: t.y }
+  }, [])
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!dragRef.current) return
@@ -193,14 +209,13 @@ function MermaidChart({ chart, id }: { chart: string; id: string }) {
         ref={containerRef}
         className="overflow-hidden cursor-grab active:cursor-grabbing py-4"
         style={{ touchAction: 'none', minHeight: '300px' }}
-        onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       >
         <div
           ref={svgRef}
-          className="flex justify-center"
+          className="flex justify-center transition-transform duration-75 ease-out"
           style={{ transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`, transformOrigin: 'center center' }}
         />
       </div>
