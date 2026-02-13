@@ -182,7 +182,7 @@ export default function Cerebro() {
   const isEmpty = !graph || graph.concepts.length === 0
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col" style={{ height: 'calc(100vh - 8rem)' }}>
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-apple-border shrink-0">
         <div className="flex items-center gap-2">
