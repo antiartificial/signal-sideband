@@ -1,5 +1,7 @@
 import { NavLink } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 import { useTheme } from '../lib/theme.ts'
+import { getVersion } from '../lib/api.ts'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: 'fa-house' },
@@ -14,6 +16,11 @@ const links = [
 
 export default function Sidebar() {
   const { theme, toggleTheme } = useTheme()
+  const { data: versionInfo } = useQuery({
+    queryKey: ['version'],
+    queryFn: getVersion,
+    staleTime: Infinity,
+  })
 
   return (
     <aside className="w-56 bg-apple-sidebar border-r border-apple-border flex flex-col shrink-0 transition-colors duration-300">
@@ -46,6 +53,11 @@ export default function Sidebar() {
           </NavLink>
         ))}
       </nav>
+      {versionInfo && (
+        <div className="text-[10px] text-apple-secondary font-mono px-5 mb-2">
+          build {versionInfo.buildNumber} ({versionInfo.version?.slice(0, 7)})
+        </div>
+      )}
       <div className="px-3 pb-4">
         <button
           onClick={toggleTheme}

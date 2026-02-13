@@ -23,8 +23,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Set via ldflags at build time: -ldflags "-X main.version=..."
+// Set via ldflags at build time: -ldflags "-X main.version=... -X main.buildNumber=..."
 var version = "dev"
+var buildNumber = "0"
 
 func main() {
 	_ = godotenv.Load()
@@ -182,7 +183,7 @@ func main() {
 	}
 
 	if storage != nil {
-		apiServer := api.NewServer(storage, embedder, digestGen, insightsGen, picGen, cerebroExtractor, cerebroEnricher, apiPort, authPassword, mediaPath, version, webDir)
+		apiServer := api.NewServer(storage, embedder, digestGen, insightsGen, picGen, cerebroExtractor, cerebroEnricher, apiPort, authPassword, mediaPath, version, buildNumber, webDir)
 		go func() {
 			if err := apiServer.Start(); err != nil {
 				log.Printf("API server error: %v", err)

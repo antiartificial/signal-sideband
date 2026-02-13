@@ -160,7 +160,7 @@ export default function About() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight mb-2">About Signal Sideband</h2>
+      <h2 className="text-2xl font-semibold tracking-tight mb-2"><i className="fawsb fa-diagram-project text-apple-secondary mr-2" />About Signal Sideband</h2>
       <p className="text-sm text-apple-secondary mb-8">
         A Signal intelligence dashboard — captures messages from a Signal group via signal-cli,
         stores them with vector embeddings, and provides search, digests, media gallery,

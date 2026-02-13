@@ -171,7 +171,7 @@ export function extractCerebro() {
 // Version
 
 export function getVersion() {
-  return fetchJSON<{ version: string }>(`${BASE}/version`)
+  return fetchJSON<{ version: string; buildNumber: string }>(`${BASE}/version`)
 }
 
 // Contacts
