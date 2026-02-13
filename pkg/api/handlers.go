@@ -165,6 +165,103 @@ func (h *Handlers) SearchMessages(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+type contactResponse struct {
+	SourceUUID  string `json:"source_uuid"`
+	PhoneNumber string `json:"phone_number"`
+	ProfileName string `json:"profile_name"`
+	Alias       string `json:"alias"`
+	SenderID    string `json:"sender_id"`
+}
+
+func (h *Handlers) GetContacts(w http.ResponseWriter, r *http.Request) {
+	contacts, err := h.store.ListContacts(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	senders, err := h.store.ListDistinctSenders(r.Context())
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	// Index contacts by source_uuid
+	byUUID := make(map[string]store.ContactRecord)
+	for _, c := range contacts {
+		byUUID[c.SourceUUID] = c
+	}
+
+	// Merge: every distinct sender gets a row, enriched with contact info if available
+	var result []contactResponse
+	seen := make(map[string]bool)
+
+	for _, s := range senders {
+		key := s.SourceUUID
+		if key == "" {
+			key = s.SenderID
+		}
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+
+		cr := contactResponse{
+			SourceUUID: s.SourceUUID,
+			SenderID:   s.SenderID,
+		}
+		if c, ok := byUUID[s.SourceUUID]; ok && s.SourceUUID != "" {
+			cr.PhoneNumber = c.PhoneNumber
+			cr.ProfileName = c.ProfileName
+			cr.Alias = c.Alias
+			delete(byUUID, s.SourceUUID)
+		}
+		result = append(result, cr)
+	}
+
+	// Add any contacts that weren't in distinct senders
+	for _, c := range byUUID {
+		if seen[c.SourceUUID] {
+			continue
+		}
+		result = append(result, contactResponse{
+			SourceUUID:  c.SourceUUID,
+			PhoneNumber: c.PhoneNumber,
+			ProfileName: c.ProfileName,
+			Alias:       c.Alias,
+			SenderID:    c.PhoneNumber,
+		})
+	}
+
+	if result == nil {
+		result = []contactResponse{}
+	}
+	writeJSON(w, http.StatusOK, result)
+}
+
+func (h *Handlers) UpdateContact(w http.ResponseWriter, r *http.Request) {
+	uuid := r.PathValue("uuid")
+	if uuid == "" {
+		writeError(w, http.StatusBadRequest, "uuid required")
+		return
+	}
+
+	var body struct {
+		Alias string `json:"alias"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid request body")
+		return
+	}
+
+	if err := h.store.UpdateContactAlias(r.Context(), uuid, body.Alias); err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
 func (h *Handlers) GetGroups(w http.ResponseWriter, r *http.Request) {
 	groups, err := h.store.ListGroups(r.Context())
 	if err != nil {

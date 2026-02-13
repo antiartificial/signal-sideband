@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from 'react-router-dom'
 import { getStats, getMessages, generateDigest, picOfDayURL, generatePicOfDay, generateInsight } from '../lib/api.ts'
+import { useContacts } from '../lib/useContacts.ts'
 import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import { format, subDays } from 'date-fns'
@@ -9,6 +10,7 @@ import { format, subDays } from 'date-fns'
 export default function Dashboard() {
   const navigate = useNavigate()
   const queryClient = useQueryClient()
+  const { resolveName } = useContacts()
   const { data: stats, isLoading } = useQuery({ queryKey: ['stats'], queryFn: getStats })
   const { data: recent } = useQuery({
     queryKey: ['messages', 'recent'],
@@ -327,7 +329,7 @@ export default function Dashboard() {
               <div className={`max-w-[80%] ${msg.is_outgoing ? 'items-end' : 'items-start'}`}>
                 {!msg.is_outgoing && (
                   <p className="text-xs font-medium text-apple-secondary mb-0.5 px-1 truncate max-w-[200px]">
-                    {msg.sender_id}
+                    {resolveName(msg.source_uuid || msg.sender_id)}
                   </p>
                 )}
                 <div

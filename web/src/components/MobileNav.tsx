@@ -8,6 +8,7 @@ const tabs = [
   { to: '/search', label: 'Search', icon: 'fa-magnifying-glass' },
   { to: '/media', label: 'Media', icon: 'fa-images' },
   { to: '/urls', label: 'Links', icon: 'fa-link' },
+  { to: '/settings', label: 'Settings', icon: 'fa-gear' },
 ]
 
 export default function MobileNav() {

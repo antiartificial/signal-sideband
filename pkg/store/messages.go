@@ -259,6 +259,44 @@ func (s *Store) FilteredSemanticSearch(ctx context.Context, embedding []float32,
 	return filtered, nil
 }
 
+func (s *Store) PurgeMessagesNotInGroup(ctx context.Context, groupID string) (int, []string, error) {
+	// Collect file paths before deleting
+	pathQuery := `
+		SELECT DISTINCT a.local_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE (m.group_id IS NULL OR m.group_id != $1)
+		AND a.local_path != ''
+		UNION
+		SELECT DISTINCT a.thumbnail_path FROM attachments a
+		JOIN messages m ON a.message_id = m.id
+		WHERE (m.group_id IS NULL OR m.group_id != $1)
+		AND a.thumbnail_path != ''
+	`
+	rows, err := s.pool.Query(ctx, pathQuery, groupID)
+	if err != nil {
+		return 0, nil, err
+	}
+	defer rows.Close()
+
+	var paths []string
+	for rows.Next() {
+		var p string
+		if err := rows.Scan(&p); err != nil {
+			return 0, nil, err
+		}
+		paths = append(paths, p)
+	}
+
+	// Delete messages (CASCADE handles attachments and urls)
+	delQuery := `DELETE FROM messages WHERE group_id IS NULL OR group_id != $1`
+	res, err := s.pool.Exec(ctx, delQuery, groupID)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	return int(res.RowsAffected()), paths, nil
+}
+
 func (s *Store) GetMessagesByTimeRange(ctx context.Context, start, end time.Time, groupID *string) ([]MessageRecord, error) {
 	var query string
 	var args []any

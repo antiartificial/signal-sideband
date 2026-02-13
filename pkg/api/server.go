@@ -33,6 +33,10 @@ func NewServer(s *store.Store, embedder ai.Embedder, generator *digest.Generator
 	mux.HandleFunc("GET /api/messages", h.GetMessages)
 	mux.HandleFunc("GET /api/messages/search", h.SearchMessages)
 
+	// Contacts
+	mux.HandleFunc("GET /api/contacts", h.GetContacts)
+	mux.HandleFunc("PUT /api/contacts/{uuid}", h.UpdateContact)
+
 	// Groups
 	mux.HandleFunc("GET /api/groups", h.GetGroups)
 

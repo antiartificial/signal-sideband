@@ -1,4 +1,4 @@
-import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord, MediaSearchResult, CerebroGraph, CerebroConceptDetail, CerebroExtraction } from './types.ts'
+import type { Stats, PaginatedResponse, MessageRecord, SearchResult, GroupWithCount, DigestRecord, URLRecord, AttachmentRecord, MediaSearchResult, CerebroGraph, CerebroConceptDetail, CerebroExtraction, ContactRecord } from './types.ts'
 
 const BASE = '/api'
 const TOKEN_KEY = 'auth_token'
@@ -165,5 +165,19 @@ export function enrichCerebroConcept(id: string) {
 export function extractCerebro() {
   return fetchJSON<CerebroExtraction>(`${BASE}/cerebro/extract`, {
     method: 'POST',
+  })
+}
+
+// Contacts
+
+export function getContacts() {
+  return fetchJSON<ContactRecord[]>(`${BASE}/contacts`)
+}
+
+export function updateContactAlias(uuid: string, alias: string) {
+  return fetchJSON<{ status: string }>(`${BASE}/contacts/${encodeURIComponent(uuid)}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ alias }),
   })
 }

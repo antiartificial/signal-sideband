@@ -37,9 +37,15 @@ type ContactRecord struct {
 	SourceUUID  string    `db:"source_uuid" json:"source_uuid"`
 	PhoneNumber string    `db:"phone_number" json:"phone_number"`
 	ProfileName string    `db:"profile_name" json:"profile_name"`
+	Alias       string    `db:"alias" json:"alias"`
 	AvatarPath  string    `db:"avatar_path" json:"avatar_path,omitempty"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at" json:"updated_at"`
+}
+
+type DistinctSender struct {
+	SenderID   string `json:"sender_id"`
+	SourceUUID string `json:"source_uuid"`
 }
 
 type AttachmentRecord struct {

@@ -9,6 +9,7 @@ import DigestView from './pages/DigestView.tsx'
 import Login from './pages/Login.tsx'
 import Search from './pages/Search.tsx'
 import MediaGallery from './pages/MediaGallery.tsx'
+import Settings from './pages/Settings.tsx'
 import URLCollection from './pages/URLCollection.tsx'
 
 export default function App() {
@@ -43,6 +44,7 @@ export default function App() {
         <Route path="/search" element={<Search />} />
         <Route path="/media" element={<MediaGallery />} />
         <Route path="/urls" element={<URLCollection />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </AppShell>
   )

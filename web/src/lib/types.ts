@@ -122,6 +122,14 @@ export interface MediaSearchResult extends AttachmentRecord {
   rank: number
 }
 
+export interface ContactRecord {
+  source_uuid: string
+  phone_number: string
+  profile_name: string
+  alias: string
+  sender_id: string
+}
+
 export interface PaginatedResponse<T> {
   data: T[]
   total: number

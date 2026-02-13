@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { searchMessages, getGroups, type SearchFilters } from '../lib/api.ts'
+import { useContacts } from '../lib/useContacts.ts'
 import Card from '../components/Card.tsx'
 import EmptyState from '../components/EmptyState.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
@@ -10,6 +11,7 @@ export default function Search() {
   const [query, setQuery] = useState('')
   const [mode, setMode] = useState<'fulltext' | 'semantic'>('fulltext')
   const [submitted, setSubmitted] = useState('')
+  const { resolveName } = useContacts()
   const [showFilters, setShowFilters] = useState(false)
   const [filters, setFilters] = useState<SearchFilters>({})
 
@@ -157,7 +159,7 @@ export default function Search() {
             <Card key={r.id} className="px-5 py-4">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-medium">
-                  {r.is_outgoing ? 'You' : r.sender_id}
+                  {r.is_outgoing ? 'You' : resolveName(r.source_uuid || r.sender_id)}
                 </span>
                 <div className="flex items-center gap-2">
                   {r.similarity != null && (

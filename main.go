@@ -98,7 +98,13 @@ func main() {
 		digestGen = digest.NewGenerator(storage, llmProvider)
 	}
 
-	// 6. Setup media path
+	// 6. Group chat filter
+	filterGroupID := os.Getenv("FILTER_GROUP_ID")
+	if filterGroupID != "" {
+		log.Printf("Group filter active: only capturing messages from group %s", filterGroupID)
+	}
+
+	// 7. Setup media path
 	mediaPath := os.Getenv("MEDIA_PATH")
 	if mediaPath == "" {
 		mediaPath = "./media"
@@ -155,6 +161,21 @@ func main() {
 	if storage != nil && (perplexityProvider != nil || grokProvider != nil) {
 		cerebroEnricher = cerebro.NewEnricher(storage, perplexityProvider, grokProvider)
 		log.Println("Cerebro enrichment enabled")
+	}
+
+	// One-time purge of messages not matching the filter group
+	if storage != nil && filterGroupID != "" {
+		count, paths, err := storage.PurgeMessagesNotInGroup(ctx, filterGroupID)
+		if err != nil {
+			log.Printf("Warning: group purge failed: %v", err)
+		} else if count > 0 {
+			log.Printf("Purged %d messages not in group %s", count, filterGroupID)
+			for _, p := range paths {
+				if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+					log.Printf("Warning: failed to remove %s: %v", p, err)
+				}
+			}
+		}
 	}
 
 	if storage != nil {
@@ -236,7 +257,7 @@ func main() {
 			log.Println("Signal connected")
 			// Read messages until disconnected
 			for msg := range client.Messages() {
-				handleMessage(ctx, msg, storage, embedder, signalAPI)
+				handleMessage(ctx, msg, storage, embedder, signalAPI, filterGroupID)
 			}
 			// If we get here, the channel closed — reconnect
 			select {
@@ -277,7 +298,7 @@ func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {
 	log.Printf("Synced %d groups", len(groups))
 }
 
-func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.Store, embedder ai.Embedder, signalAPI *sig.APIClient) {
+func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.Store, embedder ai.Embedder, signalAPI *sig.APIClient, filterGroupID string) {
 	var content string
 	var expiresAt *time.Time
 	var sender string
@@ -324,6 +345,13 @@ func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.St
 	if dataMsg.GroupInfo != nil {
 		gid := dataMsg.GroupInfo.GroupId
 		groupID = &gid
+	}
+
+	// Skip messages not matching the filter group
+	if filterGroupID != "" {
+		if groupID == nil || *groupID != filterGroupID {
+			return
+		}
 	}
 
 	if len(dataMsg.Attachments) > 0 {
