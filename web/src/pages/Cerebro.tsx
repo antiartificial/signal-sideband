@@ -186,7 +186,7 @@ export default function Cerebro() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-apple-border shrink-0">
         <div className="flex items-center gap-2">
-          <i className="fawsb fa-circle-nodes text-apple-blue text-lg" />
+          <i className="fawsb fa-share-nodes text-apple-blue text-lg" />
           <h1 className="text-lg font-semibold text-apple-text">Cerebro</h1>
         </div>
         <button
@@ -236,7 +236,7 @@ export default function Cerebro() {
           </div>
         ) : isEmpty ? (
           <div className="flex-1 flex flex-col items-center justify-center text-apple-secondary gap-4">
-            <i className="fawsb fa-circle-nodes text-5xl opacity-30" />
+            <i className="fawsb fa-share-nodes text-5xl opacity-30" />
             <p className="text-sm">No concepts extracted yet</p>
             <button
               onClick={handleExtract}

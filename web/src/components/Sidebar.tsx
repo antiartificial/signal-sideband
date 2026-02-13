@@ -5,12 +5,12 @@ import { getVersion } from '../lib/api.ts'
 
 const links = [
   { to: '/', label: 'Dashboard', icon: 'fa-house' },
-  { to: '/cerebro', label: 'Cerebro', icon: 'fa-circle-nodes' },
+  { to: '/cerebro', label: 'Cerebro', icon: 'fa-share-nodes' },
   { to: '/digests', label: 'Digests', icon: 'fa-newspaper' },
   { to: '/search', label: 'Search', icon: 'fa-magnifying-glass' },
   { to: '/media', label: 'Media', icon: 'fa-images' },
   { to: '/urls', label: 'Links', icon: 'fa-link' },
-  { to: '/about', label: 'About', icon: 'fa-diagram-project' },
+  { to: '/about', label: 'About', icon: 'fa-circle-info' },
   { to: '/settings', label: 'Settings', icon: 'fa-gear' },
 ]
 

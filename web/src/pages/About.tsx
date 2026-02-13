@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import mermaid from 'mermaid'
 import { useQuery } from '@tanstack/react-query'
 import { getVersion } from '../lib/api.ts'
@@ -138,17 +138,74 @@ graph LR
 `
 
 function MermaidChart({ chart, id }: { chart: string; id: string }) {
-  const ref = useRef<HTMLDivElement>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
+  const svgRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(1)
+  const [translate, setTranslate] = useState({ x: 0, y: 0 })
+  const dragRef = useRef<{ startX: number; startY: number; startTx: number; startTy: number } | null>(null)
 
   useEffect(() => {
-    if (!ref.current) return
-    ref.current.innerHTML = ''
+    if (!svgRef.current) return
+    svgRef.current.innerHTML = ''
+    setScale(1)
+    setTranslate({ x: 0, y: 0 })
     mermaid.render(id, chart).then(({ svg }) => {
-      if (ref.current) ref.current.innerHTML = svg
+      if (svgRef.current) svgRef.current.innerHTML = svg
     })
   }, [chart, id])
 
-  return <div ref={ref} className="flex justify-center overflow-x-auto py-4" />
+  const handleWheel = useCallback((e: React.WheelEvent) => {
+    e.preventDefault()
+    const delta = e.deltaY > 0 ? 0.9 : 1.1
+    setScale(s => Math.min(Math.max(s * delta, 0.3), 3))
+  }, [])
+
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture(e.pointerId)
+    dragRef.current = { startX: e.clientX, startY: e.clientY, startTx: translate.x, startTy: translate.y }
+  }, [translate])
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!dragRef.current) return
+    setTranslate({
+      x: dragRef.current.startTx + (e.clientX - dragRef.current.startX),
+      y: dragRef.current.startTy + (e.clientY - dragRef.current.startY),
+    })
+  }, [])
+
+  const handlePointerUp = useCallback(() => {
+    dragRef.current = null
+  }, [])
+
+  const resetView = useCallback(() => {
+    setScale(1)
+    setTranslate({ x: 0, y: 0 })
+  }, [])
+
+  return (
+    <div className="relative">
+      <div className="absolute top-2 right-2 flex gap-1 z-10">
+        <button onClick={() => setScale(s => Math.min(s * 1.2, 3))} className="px-2 py-1 text-xs bg-apple-accent-dim rounded hover:bg-apple-border transition-colors">+</button>
+        <button onClick={() => setScale(s => Math.max(s * 0.8, 0.3))} className="px-2 py-1 text-xs bg-apple-accent-dim rounded hover:bg-apple-border transition-colors">&minus;</button>
+        <button onClick={resetView} className="px-2 py-1 text-xs bg-apple-accent-dim rounded hover:bg-apple-border transition-colors">Reset</button>
+      </div>
+      <div
+        ref={containerRef}
+        className="overflow-hidden cursor-grab active:cursor-grabbing py-4"
+        style={{ touchAction: 'none' }}
+        onWheel={handleWheel}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+      >
+        <div
+          ref={svgRef}
+          className="flex justify-center"
+          style={{ transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`, transformOrigin: 'center center' }}
+        />
+      </div>
+    </div>
+  )
 }
 
 export default function About() {
@@ -160,7 +217,7 @@ export default function About() {
 
   return (
     <div>
-      <h2 className="text-2xl font-semibold tracking-tight mb-2"><i className="fawsb fa-diagram-project text-apple-secondary mr-2" />About Signal Sideband</h2>
+      <h2 className="text-2xl font-semibold tracking-tight mb-2"><i className="fawsb fa-circle-info text-apple-secondary mr-2" />About Signal Sideband</h2>
       <p className="text-sm text-apple-secondary mb-8">
         A Signal intelligence dashboard — captures messages from a Signal group via signal-cli,
         stores them with vector embeddings, and provides search, digests, media gallery,
@@ -169,7 +226,7 @@ export default function About() {
 
       {/* Architecture */}
       <h3 className="text-lg font-medium mb-3">
-        <i className="fawsb fa-diagram-project text-apple-secondary mr-2" />
+        <i className="fawsb fa-share-nodes text-apple-secondary mr-2" />
         Architecture
       </h3>
       <Card className="p-4 mb-8">
@@ -203,7 +260,7 @@ export default function About() {
         {[
           { icon: 'fa-magnifying-glass', title: 'Semantic Search', desc: 'Find any conversation with natural language. Powered by OpenAI embeddings and pgvector.' },
           { icon: 'fa-newspaper', title: 'AI Digests', desc: 'Daily summaries in multiple styles — standard newsletter, Lord of the Rings chronicle, Confucian wisdom, or South Park.' },
-          { icon: 'fa-circle-nodes', title: 'Knowledge Graph', desc: 'Cerebro extracts concepts and relationships from conversations, enriched by Perplexity and Grok.' },
+          { icon: 'fa-share-nodes', title: 'Knowledge Graph', desc: 'Cerebro extracts concepts and relationships from conversations, enriched by Perplexity and Grok.' },
           { icon: 'fa-images', title: 'Media Gallery', desc: 'All shared images with AI vision analysis. Search photos by what\'s in them.' },
           { icon: 'fa-link', title: 'Link Collection', desc: 'Every URL shared in chat, with automatic link previews. Never lose that article again.' },
           { icon: 'fa-shield-check', title: 'Privacy Respecting', desc: 'Group filtering, disappearing messages honored, remote deletes respected. Read-only — never sends back to Signal.' },
