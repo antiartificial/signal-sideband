@@ -43,7 +43,7 @@ env:
   DB_PORT: "5432"
   API_PORT: "3001"
   MEDIA_PATH: /data/media
-  FILTER_GROUP_ID: group.dmNUVGNFalVjQ003VWd6ZHF3NW54dCtQNkswaHhzMjBGQjh6cFRKemliST0=
+  FILTER_GROUP_ID: vcTTcEjUcCM7Ugzdqw5nxt+P6K0hxs20FB8zpTJzibI=
 
 infrastructure:
   postgres:
