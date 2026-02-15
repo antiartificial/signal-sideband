@@ -1,18 +1,27 @@
-app: signal-sideband
-role: webserver
-port: 3001
-healthcheck: /health
+name: signal-sideband
 deploy: true
-hosts:
-  external: sideband.slopistry.com
-  internal: signal-sideband-service
+
+repo:
+  url: http://host.docker.internal:3000/norn/signal-sideband.git
+  branch: master
+  autoDeploy: true
+  repoWeb: http://localhost:3000/norn/signal-sideband
+
 build:
   dockerfile: Dockerfile
-services:
-  postgres:
-    database: signal_sideband
-    extensions:
-      - vector
+
+processes:
+  web:
+    port: 3001
+    command: ./signal-sideband
+    health:
+      path: /health
+    scaling:
+      min: 1
+    resources:
+      cpu: 200
+      memory: 256
+
 secrets:
   - AUTH_PASSWORD
   - OPENAI_API_KEY
@@ -21,10 +30,13 @@ secrets:
   - SIGNAL_URL
   - SIGNAL_API_URL
   - SIGNAL_NUMBER
+
+migrations: for f in migrations/*.sql; do psql -U norn -d signal_sideband -f "$f"; done
+
 env:
   LLM_PROVIDER: xai
-  DATABASE_URL: postgres://norn:norn@host.minikube.internal:5432/signal_sideband?sslmode=disable
-  DB_HOST: host.minikube.internal
+  DATABASE_URL: postgres://norn:norn@host.docker.internal:5432/signal_sideband?sslmode=disable
+  DB_HOST: host.docker.internal
   DB_USER: norn
   DB_PASSWORD: norn
   DB_NAME: signal_sideband
@@ -32,20 +44,14 @@ env:
   API_PORT: "3001"
   MEDIA_PATH: /data/media
   FILTER_GROUP_ID: group.dmNUVGNFalVjQ003VWd6ZHF3NW54dCtQNkswaHhzMjBGQjh6cFRKemliST0=
+
+infrastructure:
+  postgres:
+    database: signal_sideband
+
+endpoints:
+  - url: https://sideband.slopistry.com
+
 volumes:
-  - name: media
-    mountPath: /data/media
-    size: 5Gi
-migrations:
-  command: for f in migrations/*.sql; do psql -U norn -d signal_sideband -f "$f"; done
-  database: signal_sideband
-artifacts:
-  retain: 3
-replicas: 1
-alerts:
-  window: 5m
-  threshold: 3
-repo:
-  url: http://gitea.default.svc.cluster.local:3000/norn/signal-sideband.git
-  branch: master
-  autoDeploy: true
+  - name: signal-sideband-media
+    mount: /data/media

@@ -1,5 +1,6 @@
 .env
 signal-data/
+signal-data.bak/
 /media/
 web/node_modules/
 web/dist/
