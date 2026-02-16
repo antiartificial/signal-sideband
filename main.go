@@ -330,11 +330,15 @@ func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store,
 		return
 	}
 
-	// Build lookup of signal-cli contacts by UUID
+	// Build lookups of signal-cli contacts by UUID and phone number
 	byUUID := make(map[string]sig.ContactDetail, len(contacts))
+	byNumber := make(map[string]sig.ContactDetail, len(contacts))
 	for _, c := range contacts {
 		if c.UUID != "" {
 			byUUID[c.UUID] = c
+		}
+		if c.Number != "" {
+			byNumber[c.Number] = c
 		}
 	}
 
@@ -345,14 +349,22 @@ func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store,
 			log.Printf("Contact cleanup failed: %v", err)
 		}
 		synced := 0
-		for uuid := range groupMembers {
-			cr := store.ContactRecord{SourceUUID: uuid}
-			if c, ok := byUUID[uuid]; ok {
+		for memberID := range groupMembers {
+			cr := store.ContactRecord{SourceUUID: memberID}
+			// Try UUID lookup first, then phone number lookup
+			if c, ok := byUUID[memberID]; ok {
+				cr.PhoneNumber = c.Number
+				cr.ProfileName = c.ProfileName
+			} else if c, ok := byNumber[memberID]; ok {
+				// Group member was a phone number — use the real UUID as source_uuid
+				if c.UUID != "" {
+					cr.SourceUUID = c.UUID
+				}
 				cr.PhoneNumber = c.Number
 				cr.ProfileName = c.ProfileName
 			}
 			if err := storage.UpsertContact(ctx, cr); err != nil {
-				log.Printf("Contact sync upsert failed for %s: %v", uuid, err)
+				log.Printf("Contact sync upsert failed for %s: %v", memberID, err)
 			} else {
 				synced++
 			}
