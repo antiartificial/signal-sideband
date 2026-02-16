@@ -344,27 +344,35 @@ func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store,
 
 	// If we have a group member filter, only sync those members
 	if groupMembers != nil {
-		// Clear contacts not in the group
-		if err := storage.DeleteContactsNotIn(ctx, groupMembers); err != nil {
-			log.Printf("Contact cleanup failed: %v", err)
-		}
-		synced := 0
+		// Resolve all member IDs to real UUIDs and build contact records
+		resolved := make(map[string]store.ContactRecord) // keyed by resolved UUID
 		for memberID := range groupMembers {
 			cr := store.ContactRecord{SourceUUID: memberID}
-			// Try UUID lookup first, then phone number lookup
 			if c, ok := byUUID[memberID]; ok {
 				cr.PhoneNumber = c.Number
 				cr.ProfileName = c.ProfileName
 			} else if c, ok := byNumber[memberID]; ok {
-				// Group member was a phone number — use the real UUID as source_uuid
 				if c.UUID != "" {
 					cr.SourceUUID = c.UUID
 				}
 				cr.PhoneNumber = c.Number
 				cr.ProfileName = c.ProfileName
 			}
+			resolved[cr.SourceUUID] = cr
+		}
+		// Delete contacts not in the resolved set
+		keepUUIDs := make(map[string]bool, len(resolved))
+		for uuid := range resolved {
+			keepUUIDs[uuid] = true
+		}
+		if err := storage.DeleteContactsNotIn(ctx, keepUUIDs); err != nil {
+			log.Printf("Contact cleanup failed: %v", err)
+		}
+		// Upsert resolved contacts
+		synced := 0
+		for _, cr := range resolved {
 			if err := storage.UpsertContact(ctx, cr); err != nil {
-				log.Printf("Contact sync upsert failed for %s: %v", memberID, err)
+				log.Printf("Contact sync upsert failed for %s: %v", cr.SourceUUID, err)
 			} else {
 				synced++
 			}
