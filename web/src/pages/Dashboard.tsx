@@ -8,6 +8,22 @@ import Card from '../components/Card.tsx'
 import LoadingSpinner from '../components/LoadingSpinner.tsx'
 import { format, subDays, isSameDay, parseISO, isSunday } from 'date-fns'
 
+// Truncate long URLs in message text for mobile-friendly display
+function truncateURLs(text: string): string {
+  return text.replace(/https?:\/\/[^\s]+/g, (url) => {
+    if (url.length <= 40) return url
+    try {
+      const u = new URL(url)
+      const path = u.pathname + u.search + u.hash
+      const maxPath = 20
+      const truncPath = path.length > maxPath ? path.slice(0, maxPath) + '...' : path
+      return u.origin + truncPath
+    } catch {
+      return url.slice(0, 40) + '...'
+    }
+  })
+}
+
 const HOUR_LABELS = [
   '12am','1am','2am','3am','4am','5am','6am','7am','8am','9am','10am','11am',
   '12pm','1pm','2pm','3pm','4pm','5pm','6pm','7pm','8pm','9pm','10pm','11pm',
@@ -282,6 +298,11 @@ export default function Dashboard() {
                   {resolveName(s.winner)}
                 </p>
                 <p className="text-xs text-apple-secondary mt-0.5">{s.value}</p>
+                {s.sample && (
+                  <p className="text-xs text-apple-secondary/70 mt-1.5 line-clamp-2 italic leading-snug">
+                    "{s.sample}"
+                  </p>
+                )}
               </Card>
             ))}
           </div>
@@ -307,13 +328,13 @@ export default function Dashboard() {
                   </p>
                 )}
                 <div
-                  className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
+                  className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed break-words overflow-hidden ${
                     msg.is_outgoing
                       ? 'bg-apple-blue text-white rounded-br-md'
                       : 'bg-gray-200 dark:bg-white/[0.06] text-apple-text rounded-bl-md'
                   }`}
                 >
-                  {msg.content}
+                  <span className="break-words">{truncateURLs(msg.content)}</span>
                   {msg.has_attachments && (
                     <div className={`flex items-center gap-1 mt-1 text-xs ${
                       msg.is_outgoing ? 'text-white/70' : 'text-apple-secondary'

@@ -194,6 +194,7 @@ type Superlative struct {
 	Icon   string `json:"icon"`
 	Winner string `json:"winner"`
 	Value  string `json:"value"`
+	Sample string `json:"sample,omitempty"`
 }
 
 type Stats struct {

@@ -358,12 +358,25 @@ func (h *Handlers) GenerateDigest(w http.ResponseWriter, r *http.Request) {
 func (h *Handlers) GetURLs(w http.ResponseWriter, r *http.Request) {
 	limit := intParam(r, "limit", 50)
 	offset := intParam(r, "offset", 0)
-	var domain *string
+
+	var filter store.URLFilter
 	if v := r.URL.Query().Get("domain"); v != "" {
-		domain = &v
+		filter.Domain = &v
+	}
+	if v := r.URL.Query().Get("search"); v != "" {
+		filter.Search = &v
+	}
+	if v := r.URL.Query().Get("sender"); v != "" {
+		filter.Sender = &v
+	}
+	if v := r.URL.Query().Get("tag"); v != "" {
+		filter.Tag = &v
+	}
+	if v := r.URL.Query().Get("sort"); v != "" {
+		filter.Sort = v
 	}
 
-	urls, total, err := h.store.ListURLs(r.Context(), limit, offset, domain)
+	urls, total, err := h.store.ListURLs(r.Context(), limit, offset, filter)
 	if err != nil {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return

@@ -2,7 +2,17 @@ package store
 
 import (
 	"context"
+	"fmt"
+	"strings"
 )
+
+type URLFilter struct {
+	Domain *string
+	Search *string
+	Sender *string
+	Tag    *string
+	Sort   string // "date" (default), "alpha"
+}
 
 func (s *Store) SaveURL(ctx context.Context, u URLRecord) (string, error) {
 	query := `
@@ -15,43 +25,72 @@ func (s *Store) SaveURL(ctx context.Context, u URLRecord) (string, error) {
 	return id, err
 }
 
-func (s *Store) ListURLs(ctx context.Context, limit, offset int, domain *string) ([]URLRecord, int, error) {
+func (s *Store) ListURLs(ctx context.Context, limit, offset int, filter URLFilter) ([]URLRecord, int, error) {
 	if limit <= 0 {
 		limit = 50
 	}
 
-	countQuery := "SELECT COUNT(*) FROM urls"
-	dataQuery := `
-		SELECT u.id, u.message_id, u.url, u.domain, COALESCE(u.title,''), COALESCE(u.description,''), COALESCE(u.image_url,''),
-			COALESCE(u.summary,''), u.tags, u.fetched, u.created_at,
-			COALESCE(NULLIF(c.alias,''), c.profile_name, m.sender_id, '')
+	baseFrom := `
 		FROM urls u
 		LEFT JOIN messages m ON m.id = u.message_id
 		LEFT JOIN contacts c ON c.source_uuid = m.source_uuid
 	`
 
+	var conditions []string
 	var args []any
-	if domain != nil {
-		countQuery += " WHERE domain = $1"
-		dataQuery += " WHERE u.domain = $1 ORDER BY u.created_at DESC LIMIT $2 OFFSET $3"
-		args = []any{*domain, limit, offset}
-	} else {
-		dataQuery += " ORDER BY u.created_at DESC LIMIT $1 OFFSET $2"
-		args = []any{limit, offset}
+	argIdx := 1
+
+	if filter.Domain != nil {
+		conditions = append(conditions, fmt.Sprintf("u.domain = $%d", argIdx))
+		args = append(args, *filter.Domain)
+		argIdx++
+	}
+	if filter.Search != nil {
+		pattern := "%" + strings.ToLower(*filter.Search) + "%"
+		conditions = append(conditions, fmt.Sprintf(
+			"(LOWER(COALESCE(u.title,'')) LIKE $%d OR LOWER(COALESCE(u.description,'')) LIKE $%d OR LOWER(COALESCE(u.summary,'')) LIKE $%d OR LOWER(u.url) LIKE $%d OR LOWER(u.domain) LIKE $%d)",
+			argIdx, argIdx, argIdx, argIdx, argIdx))
+		args = append(args, pattern)
+		argIdx++
+	}
+	if filter.Sender != nil {
+		conditions = append(conditions, fmt.Sprintf(
+			"COALESCE(NULLIF(c.alias,''), c.profile_name, m.sender_id, '') = $%d", argIdx))
+		args = append(args, *filter.Sender)
+		argIdx++
+	}
+	if filter.Tag != nil {
+		conditions = append(conditions, fmt.Sprintf("$%d = ANY(u.tags)", argIdx))
+		args = append(args, *filter.Tag)
+		argIdx++
 	}
 
-	var total int
-	if domain != nil {
-		err := s.pool.QueryRow(ctx, countQuery, *domain).Scan(&total)
-		if err != nil {
-			return nil, 0, err
-		}
-	} else {
-		err := s.pool.QueryRow(ctx, countQuery).Scan(&total)
-		if err != nil {
-			return nil, 0, err
-		}
+	where := ""
+	if len(conditions) > 0 {
+		where = " WHERE " + strings.Join(conditions, " AND ")
 	}
+
+	// Count query
+	var total int
+	countQuery := "SELECT COUNT(*) " + baseFrom + where
+	err := s.pool.QueryRow(ctx, countQuery, args...).Scan(&total)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	// Order
+	orderBy := "u.created_at DESC"
+	if filter.Sort == "alpha" {
+		orderBy = "COALESCE(NULLIF(u.title,''), u.url) ASC"
+	}
+
+	dataQuery := fmt.Sprintf(`
+		SELECT u.id, u.message_id, u.url, u.domain, COALESCE(u.title,''), COALESCE(u.description,''), COALESCE(u.image_url,''),
+			COALESCE(u.summary,''), u.tags, u.fetched, u.created_at,
+			COALESCE(NULLIF(c.alias,''), c.profile_name, m.sender_id, '')
+		%s%s ORDER BY %s LIMIT $%d OFFSET $%d`,
+		baseFrom, where, orderBy, argIdx, argIdx+1)
+	args = append(args, limit, offset)
 
 	rows, err := s.pool.Query(ctx, dataQuery, args...)
 	if err != nil {

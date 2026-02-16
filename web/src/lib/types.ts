@@ -42,6 +42,7 @@ export interface Superlative {
   icon: string
   winner: string
   value: string
+  sample?: string
 }
 
 export interface Stats {
