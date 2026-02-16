@@ -159,7 +159,7 @@ export default function Search() {
             <Card key={r.id} className="px-5 py-4">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-sm font-medium">
-                  {r.is_outgoing ? 'You' : resolveName(r.source_uuid || r.sender_id)}
+                  {resolveName(r.source_uuid || r.sender_id)}
                 </span>
                 <div className="flex items-center gap-2">
                   {r.similarity != null && (

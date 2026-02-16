@@ -71,6 +71,20 @@ func (s *Store) UpdateContactAlias(ctx context.Context, uuid, alias string) erro
 	return err
 }
 
+func (s *Store) DeleteContactsNotIn(ctx context.Context, keepUUIDs map[string]bool) error {
+	if len(keepUUIDs) == 0 {
+		return nil
+	}
+	uuids := make([]string, 0, len(keepUUIDs)+1)
+	uuids = append(uuids, "self") // always keep the self contact
+	for uuid := range keepUUIDs {
+		uuids = append(uuids, uuid)
+	}
+	query := `DELETE FROM contacts WHERE source_uuid != ALL($1)`
+	_, err := s.pool.Exec(ctx, query, uuids)
+	return err
+}
+
 func (s *Store) ListDistinctSenders(ctx context.Context) ([]DistinctSender, error) {
 	query := `
 		SELECT COALESCE(MIN(sender_id), ''), COALESCE(MIN(source_uuid), MIN(sender_id), ''), COUNT(*) as message_count

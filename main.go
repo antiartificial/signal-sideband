@@ -248,8 +248,8 @@ func main() {
 	// 9. Initial group + contact sync
 	if storage != nil {
 		go func() {
-			syncGroups(ctx, signalAPI, storage)
-			syncContacts(ctx, signalAPI, storage)
+			groupMembers := syncGroups(ctx, signalAPI, storage, filterGroupID)
+			syncContacts(ctx, signalAPI, storage, groupMembers)
 		}()
 	}
 
@@ -290,12 +290,14 @@ func main() {
 	cancel()
 }
 
-func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {
+// syncGroups syncs all groups and returns the member UUIDs for the filtered group (if set).
+func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store, filterGroupID string) map[string]bool {
 	groups, err := api.ListGroups()
 	if err != nil {
 		log.Printf("Group sync failed: %v", err)
-		return
+		return nil
 	}
+	var members map[string]bool
 	for _, g := range groups {
 		if err := storage.UpsertGroup(ctx, store.GroupRecord{
 			GroupID:     g.ID,
@@ -305,25 +307,61 @@ func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {
 		}); err != nil {
 			log.Printf("Group sync upsert failed for %s: %v", g.Name, err)
 		}
-		// Upsert contacts for each group member UUID
-		for _, memberUUID := range g.Members {
-			if memberUUID == "" {
-				continue
+		// Collect member UUIDs for the filtered group
+		if filterGroupID != "" && g.InternalID == filterGroupID {
+			members = make(map[string]bool, len(g.Members))
+			for _, uuid := range g.Members {
+				if uuid != "" {
+					members[uuid] = true
+				}
 			}
-			_ = storage.UpsertContact(ctx, store.ContactRecord{
-				SourceUUID: memberUUID,
-			})
+			log.Printf("Filtered group %q has %d members", g.Name, len(members))
 		}
 	}
 	log.Printf("Synced %d groups", len(groups))
+	return members
 }
 
-func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store) {
+// syncContacts syncs contacts from signal-cli, scoped to groupMembers if provided.
+func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store, groupMembers map[string]bool) {
 	contacts, err := api.ListContacts()
 	if err != nil {
 		log.Printf("Contact sync failed: %v", err)
 		return
 	}
+
+	// Build lookup of signal-cli contacts by UUID
+	byUUID := make(map[string]sig.ContactDetail, len(contacts))
+	for _, c := range contacts {
+		if c.UUID != "" {
+			byUUID[c.UUID] = c
+		}
+	}
+
+	// If we have a group member filter, only sync those members
+	if groupMembers != nil {
+		// Clear contacts not in the group
+		if err := storage.DeleteContactsNotIn(ctx, groupMembers); err != nil {
+			log.Printf("Contact cleanup failed: %v", err)
+		}
+		synced := 0
+		for uuid := range groupMembers {
+			cr := store.ContactRecord{SourceUUID: uuid}
+			if c, ok := byUUID[uuid]; ok {
+				cr.PhoneNumber = c.Number
+				cr.ProfileName = c.ProfileName
+			}
+			if err := storage.UpsertContact(ctx, cr); err != nil {
+				log.Printf("Contact sync upsert failed for %s: %v", uuid, err)
+			} else {
+				synced++
+			}
+		}
+		log.Printf("Synced %d group member contacts", synced)
+		return
+	}
+
+	// No filter — sync all contacts
 	synced := 0
 	for _, c := range contacts {
 		if c.UUID == "" {
