@@ -10,6 +10,7 @@ type Envelope struct {
 	Source       string       `json:"source"`
 	SourceNumber string       `json:"sourceNumber"`
 	SourceUuid   string       `json:"sourceUuid"`
+	SourceName   string       `json:"sourceName"`
 	Timestamp    int64        `json:"timestamp"`
 	DataMessage  *DataMessage `json:"dataMessage,omitempty"`
 	// We capture sync messages too if we want to see what WE sent from other devices

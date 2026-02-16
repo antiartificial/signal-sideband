@@ -279,7 +279,7 @@ export default function Dashboard() {
                 <i className={`fawsb ${s.icon} text-apple-blue text-lg mb-2 block`} />
                 <p className="text-xs font-semibold text-apple-blue uppercase tracking-wide">{s.label}</p>
                 <p className="text-sm text-apple-text font-medium mt-1 truncate" title={s.winner}>
-                  {s.winner === 'self' ? 'You' : s.winner}
+                  {s.winner === 'self' ? 'You' : resolveName(s.winner)}
                 </p>
                 <p className="text-xs text-apple-secondary mt-0.5">{s.value}</p>
               </Card>

@@ -227,8 +227,8 @@ func main() {
 			go analyzeWorker.Start(ctx)
 		}
 
-		// Link preview worker
-		previewWorker := extract.NewPreviewWorker(storage, 60*time.Second)
+		// Link preview worker (with Grok for URL summarization)
+		previewWorker := extract.NewPreviewWorker(storage, 60*time.Second, grokProvider)
 		go previewWorker.Start(ctx)
 
 		// Digest scheduler (daily at midnight)
@@ -245,10 +245,11 @@ func main() {
 		}
 	}
 
-	// 9. Initial group sync
+	// 9. Initial group + contact sync
 	if storage != nil {
 		go func() {
 			syncGroups(ctx, signalAPI, storage)
+			syncContacts(ctx, signalAPI, storage)
 		}()
 	}
 
@@ -308,6 +309,30 @@ func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {
 	log.Printf("Synced %d groups", len(groups))
 }
 
+func syncContacts(ctx context.Context, api *sig.APIClient, storage *store.Store) {
+	contacts, err := api.ListContacts()
+	if err != nil {
+		log.Printf("Contact sync failed: %v", err)
+		return
+	}
+	synced := 0
+	for _, c := range contacts {
+		if c.UUID == "" {
+			continue
+		}
+		if err := storage.UpsertContact(ctx, store.ContactRecord{
+			SourceUUID:  c.UUID,
+			PhoneNumber: c.Number,
+			ProfileName: c.ProfileName,
+		}); err != nil {
+			log.Printf("Contact sync upsert failed for %s: %v", c.UUID, err)
+		} else {
+			synced++
+		}
+	}
+	log.Printf("Synced %d contacts", synced)
+}
+
 func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.Store, embedder ai.Embedder, signalAPI *sig.APIClient, filterGroupID string) {
 	var content string
 	var expiresAt *time.Time
@@ -362,6 +387,15 @@ func handleMessage(ctx context.Context, msg sig.SignalMessage, storage *store.St
 		if groupID == nil || *groupID != filterGroupID {
 			return
 		}
+	}
+
+	// Auto-upsert contact from incoming message sender
+	if storage != nil && sourceUUID != nil && !isOutgoing {
+		_ = storage.UpsertContact(ctx, store.ContactRecord{
+			SourceUUID:  *sourceUUID,
+			PhoneNumber: sender,
+			ProfileName: msg.Envelope.SourceName,
+		})
 	}
 
 	// Handle remote delete ("delete for everyone")

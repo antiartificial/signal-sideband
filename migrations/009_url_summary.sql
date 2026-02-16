@@ -1,0 +1,2 @@
+ALTER TABLE urls ADD COLUMN IF NOT EXISTS summary text;
+ALTER TABLE urls ADD COLUMN IF NOT EXISTS tags text[];

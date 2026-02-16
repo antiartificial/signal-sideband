@@ -9,9 +9,9 @@ func (s *Store) UpsertContact(ctx context.Context, c ContactRecord) error {
 		INSERT INTO contacts (source_uuid, phone_number, profile_name, alias, avatar_path)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (source_uuid) DO UPDATE SET
-			phone_number = EXCLUDED.phone_number,
-			profile_name = EXCLUDED.profile_name,
-			avatar_path = EXCLUDED.avatar_path,
+			phone_number = CASE WHEN EXCLUDED.phone_number != '' THEN EXCLUDED.phone_number ELSE contacts.phone_number END,
+			profile_name = CASE WHEN EXCLUDED.profile_name != '' THEN EXCLUDED.profile_name ELSE contacts.profile_name END,
+			avatar_path = CASE WHEN EXCLUDED.avatar_path != '' THEN EXCLUDED.avatar_path ELSE contacts.avatar_path END,
 			updated_at = now()
 	`
 	_, err := s.pool.Exec(ctx, query, c.SourceUUID, c.PhoneNumber, c.ProfileName, c.Alias, c.AvatarPath)

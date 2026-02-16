@@ -64,8 +64,13 @@ export default function URLCollection() {
                         {u.title || u.url}
                       </h3>
                       {u.description && (
-                        <p className="text-xs text-apple-secondary line-clamp-2 mb-2">
+                        <p className="text-xs text-apple-secondary line-clamp-2 mb-1">
                           {u.description}
+                        </p>
+                      )}
+                      {u.summary && u.summary !== u.description && (
+                        <p className="text-xs text-apple-secondary/80 italic line-clamp-1 mb-1">
+                          {u.summary}
                         </p>
                       )}
                       <div className="flex items-center gap-2">
@@ -73,7 +78,21 @@ export default function URLCollection() {
                         <span className="text-xs text-apple-secondary">
                           {format(new Date(u.created_at), 'MMM d, yyyy')}
                         </span>
+                        {u.shared_by && (
+                          <span className="text-xs text-apple-secondary">
+                            via {u.shared_by}
+                          </span>
+                        )}
                       </div>
+                      {u.tags && u.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {u.tags.map(tag => (
+                            <span key={tag} className="px-2 py-0.5 text-xs rounded-full bg-blue-500/20 text-blue-300">
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </Card>

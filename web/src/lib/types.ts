@@ -117,6 +117,9 @@ export interface URLRecord {
   title: string
   description: string
   image_url: string
+  summary?: string
+  tags?: string[]
+  shared_by?: string
   fetched: boolean
   created_at: string
 }

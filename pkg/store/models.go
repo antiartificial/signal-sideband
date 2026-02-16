@@ -76,6 +76,9 @@ type URLRecord struct {
 	Title       string    `db:"title" json:"title"`
 	Description string    `db:"description" json:"description"`
 	ImageURL    string    `db:"image_url" json:"image_url,omitempty"`
+	Summary     string    `db:"summary" json:"summary,omitempty"`
+	Tags        []string  `db:"tags" json:"tags,omitempty"`
+	SharedBy    string    `db:"-" json:"shared_by,omitempty"`
 	Fetched     bool      `db:"fetched" json:"fetched"`
 	CreatedAt   time.Time `db:"created_at" json:"created_at"`
 }
