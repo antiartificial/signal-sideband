@@ -310,7 +310,7 @@ export default function Dashboard() {
                   className={`px-3.5 py-2 rounded-2xl text-sm leading-relaxed ${
                     msg.is_outgoing
                       ? 'bg-apple-blue text-white rounded-br-md'
-                      : 'bg-gray-100 dark:bg-white/[0.06] text-apple-text rounded-bl-md'
+                      : 'bg-gray-200 dark:bg-white/[0.06] text-apple-text rounded-bl-md'
                   }`}
                 >
                   {msg.content}
