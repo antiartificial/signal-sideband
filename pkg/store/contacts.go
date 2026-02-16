@@ -20,7 +20,7 @@ func (s *Store) UpsertContact(ctx context.Context, c ContactRecord) error {
 
 func (s *Store) GetContactByUUID(ctx context.Context, uuid string) (*ContactRecord, error) {
 	query := `
-		SELECT id, source_uuid, phone_number, profile_name, COALESCE(alias, ''), avatar_path, created_at, updated_at
+		SELECT id, source_uuid, COALESCE(phone_number, ''), COALESCE(profile_name, ''), COALESCE(alias, ''), COALESCE(avatar_path, ''), created_at, updated_at
 		FROM contacts WHERE source_uuid = $1
 	`
 	var c ContactRecord
@@ -36,7 +36,7 @@ func (s *Store) GetContactByUUID(ctx context.Context, uuid string) (*ContactReco
 
 func (s *Store) ListContacts(ctx context.Context) ([]ContactRecord, error) {
 	query := `
-		SELECT id, source_uuid, phone_number, profile_name, COALESCE(alias, ''), avatar_path, created_at, updated_at
+		SELECT id, source_uuid, COALESCE(phone_number, ''), COALESCE(profile_name, ''), COALESCE(alias, ''), COALESCE(avatar_path, ''), created_at, updated_at
 		FROM contacts ORDER BY COALESCE(NULLIF(alias, ''), profile_name) ASC
 	`
 	rows, err := s.pool.Query(ctx, query)
@@ -73,9 +73,11 @@ func (s *Store) UpdateContactAlias(ctx context.Context, uuid, alias string) erro
 
 func (s *Store) ListDistinctSenders(ctx context.Context) ([]DistinctSender, error) {
 	query := `
-		SELECT DISTINCT sender_id, COALESCE(source_uuid, '')
+		SELECT COALESCE(MIN(sender_id), ''), COALESCE(MIN(source_uuid), MIN(sender_id), ''), COUNT(*) as message_count
 		FROM messages
-		WHERE source_uuid IS NOT NULL OR sender_id != ''
+		WHERE NOT is_outgoing AND (source_uuid IS NOT NULL OR sender_id != '')
+		GROUP BY COALESCE(source_uuid, sender_id)
+		ORDER BY message_count DESC
 	`
 	rows, err := s.pool.Query(ctx, query)
 	if err != nil {
@@ -86,7 +88,7 @@ func (s *Store) ListDistinctSenders(ctx context.Context) ([]DistinctSender, erro
 	var senders []DistinctSender
 	for rows.Next() {
 		var d DistinctSender
-		if err := rows.Scan(&d.SenderID, &d.SourceUUID); err != nil {
+		if err := rows.Scan(&d.SenderID, &d.SourceUUID, &d.MessageCount); err != nil {
 			return nil, err
 		}
 		senders = append(senders, d)

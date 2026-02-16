@@ -44,8 +44,9 @@ type ContactRecord struct {
 }
 
 type DistinctSender struct {
-	SenderID   string `json:"sender_id"`
-	SourceUUID string `json:"source_uuid"`
+	SenderID     string `json:"sender_id"`
+	SourceUUID   string `json:"source_uuid"`
+	MessageCount int    `json:"message_count"`
 }
 
 type AttachmentRecord struct {

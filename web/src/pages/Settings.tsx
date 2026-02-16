@@ -45,12 +45,8 @@ export default function Settings() {
 
   if (isLoading) return <LoadingSpinner />
 
-  // Sort: aliased contacts first, then by sender_id
-  const sorted = [...(contacts ?? [])].sort((a, b) => {
-    if (a.alias && !b.alias) return -1
-    if (!a.alias && b.alias) return 1
-    return (a.alias || a.sender_id).localeCompare(b.alias || b.sender_id)
-  })
+  // Sort by message count descending (most active first)
+  const sorted = [...(contacts ?? [])].sort((a, b) => (b.message_count ?? 0) - (a.message_count ?? 0))
 
   return (
     <div>
@@ -58,28 +54,34 @@ export default function Settings() {
 
       <h3 className="text-lg font-medium mb-3">
         <i className="fawsb fa-address-book text-apple-secondary mr-2" />
-        Contact Aliases
+        Group Members
       </h3>
       <p className="text-sm text-apple-secondary mb-4">
-        Assign display names to senders. These names will appear throughout the app.
+        Set an alias to override how a member's name appears throughout the dashboard.
       </p>
 
       <Card className="overflow-hidden">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-apple-border text-left text-apple-secondary">
+              <th className="px-4 py-3 font-medium">Member</th>
               <th className="px-4 py-3 font-medium">Alias</th>
-              <th className="px-4 py-3 font-medium">Phone / Sender</th>
-              <th className="px-4 py-3 font-medium hidden sm:table-cell">UUID</th>
-              <th className="px-4 py-3 font-medium hidden md:table-cell">Profile Name</th>
+              <th className="px-4 py-3 font-medium text-right hidden sm:table-cell">Messages</th>
             </tr>
           </thead>
           <tbody>
             {sorted.map(c => {
               const uuid = c.source_uuid || c.sender_id
               const isEditing = editingUUID === uuid
+              const displayName = c.profile_name || c.sender_id
               return (
                 <tr key={uuid} className="border-b border-apple-border/50 hover:bg-apple-accent-dim transition-colors">
+                  <td className="px-4 py-3">
+                    <div className="font-medium text-apple-text">{displayName}</div>
+                    {c.profile_name && c.sender_id && c.sender_id !== c.profile_name && (
+                      <div className="text-[11px] font-mono text-apple-secondary mt-0.5">{c.sender_id}</div>
+                    )}
+                  </td>
                   <td className="px-4 py-3">
                     {isEditing ? (
                       <input
@@ -90,6 +92,7 @@ export default function Settings() {
                         onBlur={() => saveAlias(uuid)}
                         onKeyDown={e => handleKeyDown(e, uuid)}
                         disabled={saving}
+                        placeholder={displayName}
                         className="px-2 py-1 w-full rounded-md border border-apple-blue bg-apple-card text-sm
                           focus:outline-none focus:ring-2 focus:ring-apple-blue/30"
                       />
@@ -101,28 +104,22 @@ export default function Settings() {
                         {c.alias ? (
                           <span className="font-medium text-apple-text">{c.alias}</span>
                         ) : (
-                          <span className="text-apple-secondary italic">click to set...</span>
+                          <span className="text-apple-secondary italic text-xs">set alias...</span>
                         )}
                         <i className="fawsb fa-pen text-[10px] text-apple-secondary opacity-0 group-hover:opacity-100 ml-2 transition-opacity" />
                       </button>
                     )}
                   </td>
-                  <td className="px-4 py-3 font-mono text-xs text-apple-secondary">
-                    {c.sender_id}
-                  </td>
-                  <td className="px-4 py-3 font-mono text-xs text-apple-secondary hidden sm:table-cell" title={c.source_uuid}>
-                    {c.source_uuid ? c.source_uuid.slice(0, 12) + '...' : '—'}
-                  </td>
-                  <td className="px-4 py-3 text-apple-secondary hidden md:table-cell">
-                    {c.profile_name || '—'}
+                  <td className="px-4 py-3 text-right font-mono text-xs text-apple-secondary hidden sm:table-cell">
+                    {(c.message_count ?? 0).toLocaleString()}
                   </td>
                 </tr>
               )
             })}
             {sorted.length === 0 && (
               <tr>
-                <td colSpan={4} className="px-4 py-8 text-center text-apple-secondary">
-                  No senders found yet. Messages need to be received first.
+                <td colSpan={3} className="px-4 py-8 text-center text-apple-secondary">
+                  No members found yet. Messages need to be received first.
                 </td>
               </tr>
             )}

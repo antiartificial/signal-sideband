@@ -166,11 +166,12 @@ func (h *Handlers) SearchMessages(w http.ResponseWriter, r *http.Request) {
 }
 
 type contactResponse struct {
-	SourceUUID  string `json:"source_uuid"`
-	PhoneNumber string `json:"phone_number"`
-	ProfileName string `json:"profile_name"`
-	Alias       string `json:"alias"`
-	SenderID    string `json:"sender_id"`
+	SourceUUID   string `json:"source_uuid"`
+	PhoneNumber  string `json:"phone_number"`
+	ProfileName  string `json:"profile_name"`
+	Alias        string `json:"alias"`
+	SenderID     string `json:"sender_id"`
+	MessageCount int    `json:"message_count"`
 }
 
 func (h *Handlers) GetContacts(w http.ResponseWriter, r *http.Request) {
@@ -207,8 +208,9 @@ func (h *Handlers) GetContacts(w http.ResponseWriter, r *http.Request) {
 		seen[key] = true
 
 		cr := contactResponse{
-			SourceUUID: s.SourceUUID,
-			SenderID:   s.SenderID,
+			SourceUUID:   s.SourceUUID,
+			SenderID:     s.SenderID,
+			MessageCount: s.MessageCount,
 		}
 		if c, ok := byUUID[s.SourceUUID]; ok && s.SourceUUID != "" {
 			cr.PhoneNumber = c.PhoneNumber

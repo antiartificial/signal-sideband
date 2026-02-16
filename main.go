@@ -305,6 +305,15 @@ func syncGroups(ctx context.Context, api *sig.APIClient, storage *store.Store) {
 		}); err != nil {
 			log.Printf("Group sync upsert failed for %s: %v", g.Name, err)
 		}
+		// Upsert contacts for each group member UUID
+		for _, memberUUID := range g.Members {
+			if memberUUID == "" {
+				continue
+			}
+			_ = storage.UpsertContact(ctx, store.ContactRecord{
+				SourceUUID: memberUUID,
+			})
+		}
 	}
 	log.Printf("Synced %d groups", len(groups))
 }

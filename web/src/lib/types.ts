@@ -149,6 +149,7 @@ export interface ContactRecord {
   profile_name: string
   alias: string
   sender_id: string
+  message_count: number
 }
 
 export interface PaginatedResponse<T> {
