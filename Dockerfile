@@ -10,7 +10,7 @@ RUN CGO_ENABLED=0 go build -ldflags "-X main.version=${VERSION} -X main.buildNum
 
 FROM node:22-alpine AS web
 WORKDIR /app/web
-COPY web/package.json web/pnpm-lock.yaml ./
+COPY web/package.json web/pnpm-lock.yaml web/pnpm-workspace.yaml ./
 RUN corepack enable && pnpm install --frozen-lockfile
 COPY web/ .
 RUN pnpm build
