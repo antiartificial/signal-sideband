@@ -20,7 +20,7 @@ processes:
       min: 1
     resources:
       cpu: 200
-      memory: 256
+      memory: 1024
 
 secrets:
   - AUTH_PASSWORD
@@ -43,6 +43,7 @@ env:
   DB_PORT: "5432"
   API_PORT: "3001"
   MEDIA_PATH: /data/media
+  XAI_VISION_MODEL: grok-4.3
   FILTER_GROUP_ID: vcTTcEjUcCM7Ugzdqw5nxt+P6K0hxs20FB8zpTJzibI=
 
 infrastructure:

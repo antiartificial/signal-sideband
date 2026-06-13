@@ -61,6 +61,10 @@ type AttachmentRecord struct {
 	ThumbnailPath      string          `db:"thumbnail_path" json:"thumbnail_path,omitempty"`
 	Analyzed           bool            `db:"analyzed" json:"analyzed"`
 	Analysis           json.RawMessage `db:"analysis" json:"analysis,omitempty"`
+	ThumbnailAttempts  int             `db:"thumbnail_attempts" json:"thumbnail_attempts"`
+	ThumbnailError     string          `db:"thumbnail_error" json:"thumbnail_error,omitempty"`
+	AnalysisAttempts   int             `db:"analysis_attempts" json:"analysis_attempts"`
+	AnalysisError      string          `db:"analysis_error" json:"analysis_error,omitempty"`
 	CreatedAt          time.Time       `db:"created_at" json:"created_at"`
 }
 
@@ -101,13 +105,13 @@ type DigestRecord struct {
 }
 
 type MessageFilter struct {
-	GroupID   *string
-	SenderID  *string
-	After     *time.Time
-	Before    *time.Time
-	HasMedia  *bool
-	Limit     int
-	Offset    int
+	GroupID  *string
+	SenderID *string
+	After    *time.Time
+	Before   *time.Time
+	HasMedia *bool
+	Limit    int
+	Offset   int
 }
 
 type SearchFilter struct {
@@ -147,18 +151,18 @@ type DailyInsight struct {
 }
 
 type DaySnapshot struct {
-	MessageCount  int                     `json:"message_count"`
-	ActiveSenders int                     `json:"active_senders"`
-	BusiestHour   int                     `json:"busiest_hour"`
-	Crews         map[string][]CrewMember `json:"crews"`
-	TopPairs      []ConversationPair      `json:"top_pairs"`
-	VerbLeader    *VerbLeader             `json:"verb_leader"`
-	LinkOfDay     *LinkOfDay              `json:"link_of_day"`
-	YesterdayRef  *YesterdayRef           `json:"yesterday_ref"`
-	IsWeekly      bool                    `json:"is_weekly"`
-	WeeklyTotal   int                     `json:"weekly_total,omitempty"`
-	BusiestDay    string                  `json:"busiest_day,omitempty"`
-	BusiestDayCount int                   `json:"busiest_day_count,omitempty"`
+	MessageCount    int                     `json:"message_count"`
+	ActiveSenders   int                     `json:"active_senders"`
+	BusiestHour     int                     `json:"busiest_hour"`
+	Crews           map[string][]CrewMember `json:"crews"`
+	TopPairs        []ConversationPair      `json:"top_pairs"`
+	VerbLeader      *VerbLeader             `json:"verb_leader"`
+	LinkOfDay       *LinkOfDay              `json:"link_of_day"`
+	YesterdayRef    *YesterdayRef           `json:"yesterday_ref"`
+	IsWeekly        bool                    `json:"is_weekly"`
+	WeeklyTotal     int                     `json:"weekly_total,omitempty"`
+	BusiestDay      string                  `json:"busiest_day,omitempty"`
+	BusiestDayCount int                     `json:"busiest_day_count,omitempty"`
 }
 
 type CrewMember struct {
@@ -198,13 +202,13 @@ type Superlative struct {
 }
 
 type Stats struct {
-	TotalMessages int            `json:"total_messages"`
-	TodayMessages int            `json:"today_messages"`
-	TotalGroups   int            `json:"total_groups"`
-	TotalURLs     int            `json:"total_urls"`
-	LatestDigest  *DigestRecord  `json:"latest_digest,omitempty"`
-	DailyInsight  *DailyInsight  `json:"daily_insight,omitempty"`
-	Superlatives  []Superlative  `json:"superlatives,omitempty"`
+	TotalMessages int           `json:"total_messages"`
+	TodayMessages int           `json:"today_messages"`
+	TotalGroups   int           `json:"total_groups"`
+	TotalURLs     int           `json:"total_urls"`
+	LatestDigest  *DigestRecord `json:"latest_digest,omitempty"`
+	DailyInsight  *DailyInsight `json:"daily_insight,omitempty"`
+	Superlatives  []Superlative `json:"superlatives,omitempty"`
 }
 
 // Cerebro Knowledge Graph

@@ -7,13 +7,17 @@ import (
 )
 
 const attachmentCols = `id, message_id, signal_attachment_id, content_type, COALESCE(filename,''), size,
-	COALESCE(local_path,''), downloaded, COALESCE(thumbnail_path,''), analyzed, analysis, created_at`
+	COALESCE(local_path,''), downloaded, COALESCE(thumbnail_path,''), analyzed, analysis,
+	COALESCE(thumbnail_attempts, 0), COALESCE(thumbnail_error, ''),
+	COALESCE(analysis_attempts, 0), COALESCE(analysis_error, ''), created_at`
 
 func scanAttachment(scan func(dest ...any) error) (AttachmentRecord, error) {
 	var a AttachmentRecord
 	err := scan(
 		&a.ID, &a.MessageID, &a.SignalAttachmentID, &a.ContentType, &a.Filename, &a.Size,
-		&a.LocalPath, &a.Downloaded, &a.ThumbnailPath, &a.Analyzed, &a.Analysis, &a.CreatedAt,
+		&a.LocalPath, &a.Downloaded, &a.ThumbnailPath, &a.Analyzed, &a.Analysis,
+		&a.ThumbnailAttempts, &a.ThumbnailError, &a.AnalysisAttempts, &a.AnalysisError,
+		&a.CreatedAt,
 	)
 	return a, err
 }
@@ -129,8 +133,14 @@ func (s *Store) GetUndownloadedAttachments(ctx context.Context) ([]AttachmentRec
 }
 
 func (s *Store) SetThumbnailPath(ctx context.Context, id, path string) error {
-	query := `UPDATE attachments SET thumbnail_path = $2 WHERE id = $1`
+	query := `UPDATE attachments SET thumbnail_path = $2, thumbnail_error = NULL WHERE id = $1`
 	_, err := s.pool.Exec(ctx, query, id, path)
+	return err
+}
+
+func (s *Store) MarkAttachmentThumbnailFailed(ctx context.Context, id string, errText string) error {
+	query := `UPDATE attachments SET thumbnail_attempts = thumbnail_attempts + 1, thumbnail_error = $2 WHERE id = $1`
+	_, err := s.pool.Exec(ctx, query, id, errText)
 	return err
 }
 
@@ -138,6 +148,7 @@ func (s *Store) GetUnthumbnailedAttachments(ctx context.Context) ([]AttachmentRe
 	query := fmt.Sprintf(`
 		SELECT %s FROM attachments
 		WHERE downloaded = true AND thumbnail_path IS NULL
+		AND COALESCE(thumbnail_attempts, 0) < 3
 		AND (content_type LIKE 'image/%%' OR content_type LIKE 'video/%%')
 		ORDER BY created_at ASC LIMIT 100
 	`, attachmentCols)
@@ -162,6 +173,7 @@ func (s *Store) GetUnanalyzedAttachments(ctx context.Context) ([]AttachmentRecor
 	query := fmt.Sprintf(`
 		SELECT %s FROM attachments
 		WHERE downloaded = true AND analyzed = false
+		AND COALESCE(analysis_attempts, 0) < 3
 		AND (content_type LIKE 'image/%%' OR content_type LIKE 'video/%%')
 		ORDER BY created_at ASC LIMIT 50
 	`, attachmentCols)
@@ -183,8 +195,14 @@ func (s *Store) GetUnanalyzedAttachments(ctx context.Context) ([]AttachmentRecor
 }
 
 func (s *Store) MarkAttachmentAnalyzed(ctx context.Context, id string, analysis json.RawMessage) error {
-	query := `UPDATE attachments SET analyzed = true, analysis = $2 WHERE id = $1`
+	query := `UPDATE attachments SET analyzed = true, analysis = $2, analysis_error = NULL WHERE id = $1`
 	_, err := s.pool.Exec(ctx, query, id, analysis)
+	return err
+}
+
+func (s *Store) MarkAttachmentAnalysisFailed(ctx context.Context, id string, errText string) error {
+	query := `UPDATE attachments SET analysis_attempts = analysis_attempts + 1, analysis_error = $2 WHERE id = $1`
+	_, err := s.pool.Exec(ctx, query, id, errText)
 	return err
 }
 

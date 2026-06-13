@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -20,6 +21,7 @@ type AnalyzeWorker struct {
 	model     string
 	interval  time.Duration
 	mediaPath string
+	maxBytes  int64
 }
 
 func NewAnalyzeWorker(s *store.Store, xaiAPIKey string, interval time.Duration, mediaPath string) *AnalyzeWorker {
@@ -28,9 +30,10 @@ func NewAnalyzeWorker(s *store.Store, xaiAPIKey string, interval time.Duration, 
 	return &AnalyzeWorker{
 		store:     s,
 		client:    openai.NewClientWithConfig(cfg),
-		model:     "grok-2-vision-1212",
+		model:     firstNonEmpty(os.Getenv("XAI_VISION_MODEL"), "grok-4.3"),
 		interval:  interval,
 		mediaPath: mediaPath,
+		maxBytes:  int64FromEnv("XAI_VISION_MAX_IMAGE_BYTES", 5*1024*1024),
 	}
 }
 
@@ -62,7 +65,7 @@ func (w *AnalyzeWorker) process(ctx context.Context) {
 	for _, a := range attachments {
 		var imagePath string
 		if strings.HasPrefix(a.ContentType, "image/") {
-			imagePath = a.LocalPath
+			imagePath = firstNonEmpty(a.ThumbnailPath, a.LocalPath)
 		} else if strings.HasPrefix(a.ContentType, "video/") {
 			// Use thumbnail for videos; skip if not yet generated
 			if a.ThumbnailPath == "" {
@@ -80,6 +83,9 @@ func (w *AnalyzeWorker) process(ctx context.Context) {
 		analysis, err := w.analyzeImage(ctx, imagePath, a.ContentType)
 		if err != nil {
 			log.Printf("Analysis worker: analyze %s failed: %v", a.ID, err)
+			if markErr := w.store.MarkAttachmentAnalysisFailed(ctx, a.ID, err.Error()); markErr != nil {
+				log.Printf("Analysis worker: mark failure %s failed: %v", a.ID, markErr)
+			}
 			continue
 		}
 
@@ -92,6 +98,14 @@ func (w *AnalyzeWorker) process(ctx context.Context) {
 }
 
 func (w *AnalyzeWorker) analyzeImage(ctx context.Context, imagePath, contentType string) (json.RawMessage, error) {
+	info, err := os.Stat(imagePath)
+	if err != nil {
+		return nil, fmt.Errorf("stat image: %w", err)
+	}
+	if info.Size() > w.maxBytes {
+		return nil, fmt.Errorf("image too large for inline vision payload: %d bytes > %d bytes", info.Size(), w.maxBytes)
+	}
+
 	data, err := os.ReadFile(imagePath)
 	if err != nil {
 		return nil, fmt.Errorf("read image: %w", err)
@@ -109,7 +123,7 @@ func (w *AnalyzeWorker) analyzeImage(ctx context.Context, imagePath, contentType
 		Model: w.model,
 		Messages: []openai.ChatCompletionMessage{
 			{
-				Role:    openai.ChatMessageRoleSystem,
+				Role: openai.ChatMessageRoleSystem,
 				Content: `You are an image analysis assistant. Analyze the image and respond with ONLY a JSON object (no markdown, no code blocks) with these fields:
 - "description": A 1-2 sentence description of what the image shows
 - "text_content": Any text visible in the image (empty string if none)
@@ -175,4 +189,26 @@ func (w *AnalyzeWorker) analyzeImage(ctx context.Context, imagePath, contentType
 	}
 
 	return json.RawMessage(result), nil
+}
+
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if strings.TrimSpace(value) != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func int64FromEnv(name string, fallback int64) int64 {
+	value := strings.TrimSpace(os.Getenv(name))
+	if value == "" {
+		return fallback
+	}
+	parsed, err := strconv.ParseInt(value, 10, 64)
+	if err != nil || parsed <= 0 {
+		log.Printf("Warning: invalid %s=%q; using %d", name, value, fallback)
+		return fallback
+	}
+	return parsed
 }

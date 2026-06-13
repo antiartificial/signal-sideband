@@ -65,6 +65,9 @@ func (w *Worker) process(ctx context.Context) {
 			thumbPath, err := GenerateThumbnail(localPath, a.ContentType, a.ID, w.mediaPath)
 			if err != nil {
 				log.Printf("Media worker: thumbnail %s failed: %v", a.ID, err)
+				if markErr := w.store.MarkAttachmentThumbnailFailed(ctx, a.ID, err.Error()); markErr != nil {
+					log.Printf("Media worker: mark thumbnail failure %s failed: %v", a.ID, markErr)
+				}
 				continue
 			}
 			if err := w.store.SetThumbnailPath(ctx, a.ID, thumbPath); err != nil {
@@ -90,6 +93,9 @@ func (w *Worker) backfillThumbnails(ctx context.Context) {
 		thumbPath, err := GenerateThumbnail(a.LocalPath, a.ContentType, a.ID, w.mediaPath)
 		if err != nil {
 			log.Printf("Media worker: backfill thumbnail %s failed: %v", a.ID, err)
+			if markErr := w.store.MarkAttachmentThumbnailFailed(ctx, a.ID, err.Error()); markErr != nil {
+				log.Printf("Media worker: backfill mark failure %s failed: %v", a.ID, markErr)
+			}
 			continue
 		}
 		if err := w.store.SetThumbnailPath(ctx, a.ID, thumbPath); err != nil {

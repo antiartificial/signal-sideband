@@ -1,21 +1,24 @@
 package media
 
 import (
+	"context"
 	"fmt"
 	"image"
-	"image/jpeg"
 	_ "image/gif"
+	"image/jpeg"
 	_ "image/png"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/webp"
 )
 
 const thumbMaxDim = 300
+const ffmpegTimeout = 45 * time.Second
 
 func IsVisualMedia(contentType string) bool {
 	return strings.HasPrefix(contentType, "image/") || strings.HasPrefix(contentType, "video/")
@@ -62,34 +65,39 @@ func generateImageThumbnail(srcPath, outPath string) (string, error) {
 }
 
 func generateVideoThumbnail(srcPath, outPath string) (string, error) {
-	// Extract a frame at 1 second using ffmpeg
 	tmpFrame := outPath + ".tmp.jpg"
-	cmd := exec.Command("ffmpeg",
-		"-ss", "1",
-		"-i", srcPath,
-		"-vframes", "1",
-		"-q:v", "2",
-		"-y",
-		tmpFrame,
-	)
-	if err := cmd.Run(); err != nil {
+	defer os.Remove(tmpFrame)
+
+	// Extract and scale in ffmpeg so Go only decodes a small JPEG frame.
+	if err := runFFmpegFrame(srcPath, tmpFrame, "1"); err != nil {
 		// Try at 0 seconds if 1s fails (very short videos)
-		cmd = exec.Command("ffmpeg",
-			"-ss", "0",
-			"-i", srcPath,
-			"-vframes", "1",
-			"-q:v", "2",
-			"-y",
-			tmpFrame,
-		)
-		if err := cmd.Run(); err != nil {
+		if err := runFFmpegFrame(srcPath, tmpFrame, "0"); err != nil {
 			return "", fmt.Errorf("ffmpeg frame extract: %w", err)
 		}
 	}
-	defer os.Remove(tmpFrame)
 
 	// Resize the extracted frame
 	return generateImageThumbnail(tmpFrame, outPath)
+}
+
+func runFFmpegFrame(srcPath, outPath, offset string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), ffmpegTimeout)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, "ffmpeg",
+		"-v", "error",
+		"-nostdin",
+		"-threads", "1",
+		"-ss", offset,
+		"-i", srcPath,
+		"-frames:v", "1",
+		"-vf", "scale='min(300,iw)':-2",
+		"-q:v", "3",
+		"-y",
+		outPath,
+	)
+	cmd.WaitDelay = 2 * time.Second
+	return cmd.Run()
 }
 
 func resizeImage(src image.Image) image.Image {
