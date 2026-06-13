@@ -1,0 +1,8 @@
+.git
+.env
+media
+signal-data
+web/node_modules
+web/dist
+node_modules
+*.log
