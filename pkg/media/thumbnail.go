@@ -97,7 +97,15 @@ func runFFmpegFrame(srcPath, outPath, offset string) error {
 		outPath,
 	)
 	cmd.WaitDelay = 2 * time.Second
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+	if info, err := os.Stat(outPath); err != nil {
+		return fmt.Errorf("ffmpeg produced no frame: %w", err)
+	} else if info.Size() == 0 {
+		return fmt.Errorf("ffmpeg produced empty frame")
+	}
+	return nil
 }
 
 func resizeImage(src image.Image) image.Image {

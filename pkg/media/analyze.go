@@ -63,24 +63,24 @@ func (w *AnalyzeWorker) process(ctx context.Context) {
 	}
 
 	for _, a := range attachments {
-		var imagePath string
+		var imagePaths []string
 		if strings.HasPrefix(a.ContentType, "image/") {
-			imagePath = firstNonEmpty(a.ThumbnailPath, a.LocalPath)
+			imagePaths = appendResolved(imagePaths, w.mediaPath, a.ThumbnailPath, a.LocalPath)
 		} else if strings.HasPrefix(a.ContentType, "video/") {
 			// Use thumbnail for videos; skip if not yet generated
 			if a.ThumbnailPath == "" {
 				continue
 			}
-			imagePath = a.ThumbnailPath
+			imagePaths = appendResolved(imagePaths, w.mediaPath, a.ThumbnailPath)
 		} else {
 			continue
 		}
 
-		if imagePath == "" {
+		if len(imagePaths) == 0 {
 			continue
 		}
 
-		analysis, err := w.analyzeImage(ctx, imagePath, a.ContentType)
+		analysis, err := w.analyzeAnyImage(ctx, imagePaths, a.ContentType)
 		if err != nil {
 			log.Printf("Analysis worker: analyze %s failed: %v", a.ID, err)
 			if markErr := w.store.MarkAttachmentAnalysisFailed(ctx, a.ID, err.Error()); markErr != nil {
@@ -95,6 +95,18 @@ func (w *AnalyzeWorker) process(ctx context.Context) {
 		}
 		log.Printf("Analysis worker: analyzed %s", a.ID)
 	}
+}
+
+func (w *AnalyzeWorker) analyzeAnyImage(ctx context.Context, imagePaths []string, contentType string) (json.RawMessage, error) {
+	var lastErr error
+	for _, imagePath := range imagePaths {
+		analysis, err := w.analyzeImage(ctx, imagePath, contentType)
+		if err == nil {
+			return analysis, nil
+		}
+		lastErr = err
+	}
+	return nil, lastErr
 }
 
 func (w *AnalyzeWorker) analyzeImage(ctx context.Context, imagePath, contentType string) (json.RawMessage, error) {
@@ -211,4 +223,23 @@ func int64FromEnv(name string, fallback int64) int64 {
 		return fallback
 	}
 	return parsed
+}
+
+func appendResolved(paths []string, mediaPath string, values ...string) []string {
+	seen := make(map[string]bool, len(paths)+len(values))
+	for _, path := range paths {
+		seen[path] = true
+	}
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value == "" {
+			continue
+		}
+		resolved := ResolveMediaPath(value, mediaPath)
+		if !seen[resolved] {
+			paths = append(paths, resolved)
+			seen[resolved] = true
+		}
+	}
+	return paths
 }
