@@ -31,6 +31,12 @@ func NewStore(ctx context.Context, connString string) (*Store, error) {
 	return &Store{pool: pool}, nil
 }
 
+// Ping verifies that the configured database accepts a connection now.
+// Pool construction alone does not establish a connection.
+func (s *Store) Ping(ctx context.Context) error {
+	return s.pool.Ping(ctx)
+}
+
 func (s *Store) SearchSimilar(ctx context.Context, embedding []float32, threshold float64, limit int) ([]string, error) {
 	query := `SELECT content FROM match_messages($1, $2, $3)`
 	vec := pgvector.NewVector(embedding)
