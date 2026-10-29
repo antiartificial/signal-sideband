@@ -19,7 +19,7 @@ processes:
     scaling:
       min: 1
     resources:
-      cpu: 200
+      cpu: 25
       memory: 1024
 
 secrets:
@@ -30,15 +30,15 @@ secrets:
   - SIGNAL_URL
   - SIGNAL_API_URL
   - SIGNAL_NUMBER
+  - DATABASE_URL
+  - DB_PASSWORD
 
 migrations: for f in migrations/*.sql; do psql -U norn -d signal_sideband -f "$f"; done
 
 env:
   LLM_PROVIDER: xai
-  DATABASE_URL: postgres://norn:norn@host.docker.internal:5432/signal_sideband?sslmode=disable
   DB_HOST: host.docker.internal
   DB_USER: norn
-  DB_PASSWORD: norn
   DB_NAME: signal_sideband
   DB_PORT: "5432"
   API_PORT: "3001"
@@ -49,6 +49,10 @@ env:
 infrastructure:
   postgres:
     database: signal_sideband
+
+snapshots:
+  keep: 3
+  retentionEnabled: true
 
 endpoints:
   - url: https://sideband.slopistry.com
