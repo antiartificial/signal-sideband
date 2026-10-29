@@ -33,7 +33,7 @@ secrets:
   - DATABASE_URL
   - DB_PASSWORD
 
-migrations: for f in migrations/*.sql; do psql -U norn -d signal_sideband -f "$f"; done
+migrations: sh scripts/migrate.sh
 
 env:
   LLM_PROVIDER: xai
