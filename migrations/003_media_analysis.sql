@@ -23,6 +23,7 @@ BEGIN
   RETURN NEW;
 END; $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_attachments_analysis_tsv ON attachments;
 CREATE TRIGGER trg_attachments_analysis_tsv
   BEFORE INSERT OR UPDATE OF analysis ON attachments
   FOR EACH ROW EXECUTE FUNCTION attachments_analysis_tsv_trigger();
