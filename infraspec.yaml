@@ -2,10 +2,10 @@ name: signal-sideband
 deploy: true
 
 repo:
-  url: http://host.docker.internal:3000/norn/signal-sideband.git
+  url: https://github.com/antiartificial/signal-sideband.git
   branch: master
   autoDeploy: true
-  repoWeb: http://localhost:3000/norn/signal-sideband
+  repoWeb: https://github.com/antiartificial/signal-sideband
 
 build:
   dockerfile: Dockerfile
